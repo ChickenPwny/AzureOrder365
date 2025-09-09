@@ -928,7 +928,7 @@
         let logData = [];
         let connections = [];
         let connectionsVisible = true;
-        const MAX_TOTAL_CONNECTIONS = 100; // Global limit to prevent memory issues
+        const MAX_TOTAL_CONNECTIONS = 10000; // Much higher limit for large files
 
         // Initialize map when page loads
         document.addEventListener('DOMContentLoaded', function() {
@@ -1035,12 +1035,21 @@
                         throw new Error('Unsupported file format');
                     }
 
-                    // Filter for security risks only at parsing level
+                    // Aggressive filtering for security risks only - keep ALL risk levels
                     const allData = Array.isArray(data) ? data : [data];
+                    console.log(`Total log entries before filtering: ${allData.length}`);
+                    
                     logData = allData.filter(logEntry => {
                         const riskLevel = window.threatEngine.determineRiskLevel(logEntry);
-                        return riskLevel === 'medium' || riskLevel === 'high';
+                        // Keep ALL risk levels (low, medium, high) - only filter out 'none'
+                        const shouldKeep = riskLevel !== 'none';
+                        if (!shouldKeep) {
+                            console.log(`Filtering out non-threat entry:`, logEntry);
+                        }
+                        return shouldKeep;
                     });
+                    
+                    console.log(`Log entries after filtering: ${logData.length} (kept ${logData.length}/${allData.length})`);
                     
                     document.getElementById('status').textContent = `Loaded ${logData.length} security risk entries (filtered from ${allData.length} total logs)`;
                     
