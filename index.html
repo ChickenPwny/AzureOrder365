@@ -186,6 +186,25 @@
         .maplibregl-canvas-container canvas {
             z-index: 2;
         }
+        
+        /* Simple marker styling like test-minimal.html */
+        .maplibregl-marker {
+            z-index: 1000;
+        }
+        
+        .maplibregl-marker div {
+            z-index: 1001;
+        }
+        
+        /* Force connection lines to be on top */
+        .maplibregl-canvas-container canvas[style*="z-index"] {
+            z-index: 999 !important;
+        }
+        
+        /* Ensure all map layers are below markers and connections */
+        .maplibregl-canvas-container {
+            z-index: 1 !important;
+        }
     </style>
 </head>
 <body>
@@ -220,6 +239,8 @@
         <button onclick="clearAllConnections()">Clear Connections</button>
         <button onclick="showAllMarkers()">Show All Markers</button>
         <button onclick="showAllConnections()">Show All Connections</button>
+        <button onclick="forceShowMarkers()" style="background: #ffc107; color: black;">👁️ Force Show Markers</button>
+        <button onclick="forceShowConnections()" style="background: #17a2b8; color: white;">🔗 Force Show Lines</button>
         <button onclick="refreshThreatIntelligence()" style="background: #dc3545; color: white;">🛡️ Refresh Threat Intel</button>
         <button onclick="threatEngine.updateThreatIntelligenceStats()" style="background: #28a745; color: white;">📊 Update Stats</button>
         <span id="connectionStatus" style="margin-left: 10px; font-size: 12px; color: #666;"></span>
@@ -1036,7 +1057,11 @@
         }
 
         async function generateMapFromLogs() {
-            if (!map || logData.length === 0) return;
+            console.log('generateMapFromLogs called with logData length:', logData.length);
+            if (!map || logData.length === 0) {
+                console.log('Map not ready or no log data');
+                return;
+            }
 
             // Clear existing markers and connections
             markers.forEach(marker => marker.remove());
@@ -1044,6 +1069,7 @@
             clearAllConnections();
 
             document.getElementById('status').textContent = 'Generating map with threat intelligence...';
+            console.log('Starting to process', logData.length, 'log entries');
 
             let processedCount = 0;
             const totalCount = logData.length;
@@ -1051,16 +1077,24 @@
             // Process entries with threat intelligence (async)
             for (let index = 0; index < logData.length; index++) {
                 const logEntry = logData[index];
+                console.log(`Processing log entry ${index + 1}:`, logEntry);
+                
                 const ip = window.threatEngine.extractIPAddress(logEntry);
+                console.log(`Extracted IP: ${ip}`);
+                
                 if (ip && window.threatEngine.isValidIP(ip)) {
+                    console.log(`Valid IP found: ${ip}, creating marker...`);
                     const location = window.threatEngine.analyzeLocalIP(ip);
                     const riskLevel = window.threatEngine.determineRiskLevel(logEntry);
+                    console.log(`Risk level: ${riskLevel}, Location:`, location);
                     
                     // Create marker with threat intelligence (async)
                     const marker = await createMarker(location, logEntry, ip, riskLevel);
                     
                     // Create connections to related markers
                     createIPConnections(ip, marker.riskLevel, marker);
+                } else {
+                    console.log(`No valid IP found for entry ${index + 1}`);
                 }
                 processedCount++;
                 
@@ -1088,6 +1122,12 @@
 
             // Update status immediately
             document.getElementById('status').textContent = `Security risks map generated with ${markers.length} risk markers and ${connections.length} connections (with threat intelligence)`;
+            
+            // Force show all markers and connections to ensure they're visible
+            setTimeout(() => {
+                forceShowMarkers();
+                forceShowConnections();
+            }, 500);
             
             // Update connection status
             const statusElement = document.getElementById('connectionStatus');
@@ -1134,23 +1174,22 @@
             console.log(`Creating marker for IP ${ip} with risk level: ${enhancedRiskLevel}, color: ${colors[enhancedRiskLevel]}, threat score: ${threatData.threatScore}`);
 
             const markerElement = document.createElement('div');
-
-            // Set styles individually to ensure they stick
-            markerElement.style.width = '25px';
-            markerElement.style.height = '25px';
-            markerElement.style.borderRadius = '50%';
-            markerElement.style.border = '3px solid white';
-            markerElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-            markerElement.style.cursor = 'pointer';
-            markerElement.style.backgroundColor = colors[enhancedRiskLevel];
-            markerElement.style.background = colors[enhancedRiskLevel];
-
-            // Also set as inline style attribute
-            markerElement.setAttribute('style', 
-                `width: 25px; height: 25px; border-radius: 50%; border: 3px solid white; ` +
-                `box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer; ` +
-                `background-color: ${colors[enhancedRiskLevel]} !important; background: ${colors[enhancedRiskLevel]} !important;`
-            );
+            
+            // Use the same CSS approach as test-minimal.html
+            markerElement.style.cssText = `
+                background: ${colors[enhancedRiskLevel]};
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                border: 3px solid white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 14px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                cursor: pointer;
+            `;
 
             // Enhanced popup content with threat intelligence
             const threatInfo = threatData.reputation !== 'clean' ? `
@@ -1183,13 +1222,33 @@
                 .setPopup(new maplibregl.Popup().setHTML(popupContent))
                 .addTo(map);
             
+            // Add debugging to ensure marker is visible
+            console.log(`Marker added for IP ${ip} at coordinates: [${location.lng}, ${location.lat}]`);
+            console.log(`Marker element:`, markerElement);
+            console.log(`Marker element computed styles:`, window.getComputedStyle(markerElement));
+            console.log(`Map container:`, map.getContainer());
+            console.log(`Marker added to map:`, marker);
+            
+            // Check if marker is actually in the DOM
+            setTimeout(() => {
+                const markerInDOM = document.querySelector('.maplibregl-marker');
+                console.log(`Markers in DOM:`, document.querySelectorAll('.maplibregl-marker').length);
+                console.log(`First marker in DOM:`, markerInDOM);
+            }, 100);
+
+            // Force marker visibility
+            markerElement.style.display = 'block';
+            markerElement.style.visibility = 'visible';
+            markerElement.style.opacity = '1';
+            markerElement.style.zIndex = '1000';
+
             // Store additional data for connections
             marker.ip = ip;
             marker.riskLevel = enhancedRiskLevel;
             marker.location = location;
             marker.logEntry = logEntry;
-            marker.threatData = threatData; // Store threat intelligence data
-            
+            marker.threatData = threatData;
+
             markers.push(marker);
             
             // Update threat intelligence dashboard
@@ -1200,6 +1259,9 @@
 
         // Connection Functions
         function createIPConnections(ip, riskLevel, currentMarker) {
+            console.log(`Creating connections for IP: ${ip}, risk level: ${riskLevel}`);
+            console.log(`Total markers available for connections: ${markers.length}`);
+            
             // Limit connections to prevent timeout - only connect to most relevant markers
             const maxConnections = 5;
             
@@ -1232,12 +1294,17 @@
 
             // Limit the number of connections to prevent timeout
             const limitedMarkers = relatedMarkers.slice(0, maxConnections);
+            
+            console.log(`Found ${relatedMarkers.length} related markers, limiting to ${limitedMarkers.length}`);
 
             // Create connection lines
             limitedMarkers.forEach(relatedMarker => {
                 const relationshipType = determineRelationshipType(currentMarker, relatedMarker);
+                console.log(`Creating connection between ${currentMarker.ip} and ${relatedMarker.ip}, type: ${relationshipType}`);
                 createConnectionLine(currentMarker, relatedMarker, relationshipType);
             });
+            
+            console.log(`Finished creating connections for IP: ${ip}`);
         }
 
         function determineRelationshipType(marker1, marker2) {
@@ -1261,6 +1328,8 @@
 
         function createConnectionLine(fromMarker, toMarker, relationshipType) {
             try {
+                console.log(`Creating connection line between markers:`, fromMarker.ip, 'and', toMarker.ip, 'type:', relationshipType);
+                
                 // Check global connection limit
                 if (connections.length >= MAX_TOTAL_CONNECTIONS) {
                     console.log('Maximum connections reached, skipping new connection');
@@ -1270,11 +1339,17 @@
                 const fromLngLat = fromMarker.getLngLat();
                 const toLngLat = toMarker.getLngLat();
                 
+                console.log(`From coordinates: [${fromLngLat.lng}, ${fromLngLat.lat}]`);
+                console.log(`To coordinates: [${toLngLat.lng}, ${toLngLat.lat}]`);
+                
                 // Create a unique ID based on marker positions to prevent duplicates
                 const lineId = `connection-${Math.round(fromLngLat.lng * 1000)}-${Math.round(fromLngLat.lat * 1000)}-${Math.round(toLngLat.lng * 1000)}-${Math.round(toLngLat.lat * 1000)}`;
                 
+                console.log(`Connection line ID: ${lineId}`);
+                
                 // Check if connection already exists
                 if (map.getSource(lineId)) {
+                    console.log(`Connection already exists: ${lineId}`);
                     return null;
                 }
                 
@@ -1298,7 +1373,7 @@
                 }
             });
 
-            // Add layer with proper z-index elevation
+            // Add layer on top of everything with maximum z-index
             map.addLayer({
                 id: lineId,
                 type: 'line',
@@ -1310,10 +1385,14 @@
                 },
                 paint: {
                     'line-color': getConnectionColor(relationshipType),
-                    'line-width': Math.max(getConnectionWidth(relationshipType), 2), // Ensure minimum width
-                    'line-opacity': Math.max(getConnectionOpacity(relationshipType), 0.6) // Ensure minimum opacity
+                    'line-width': Math.max(getConnectionWidth(relationshipType), 4), // Make lines even thicker
+                    'line-opacity': Math.max(getConnectionOpacity(relationshipType), 0.9) // Make lines more opaque
                 }
-            }, 'simple-tiles'); // Insert before the base tiles layer to elevate above map
+            }); // No layer insertion - appears on top
+
+            console.log(`Layer added: ${lineId}, color: ${getConnectionColor(relationshipType)}, width: ${getConnectionWidth(relationshipType)}, opacity: ${getConnectionOpacity(relationshipType)}`);
+            console.log(`Layer exists in map:`, map.getLayer(lineId) ? 'YES' : 'NO');
+            console.log(`Source exists in map:`, map.getSource(lineId) ? 'YES' : 'NO');
 
             const connection = {
                 id: lineId,
@@ -1330,6 +1409,7 @@
 
             connections.push(connection);
             console.log('Created connection:', lineId, 'type:', relationshipType);
+            console.log(`Total connections: ${connections.length}`);
             return connection;
             
             } catch (error) {
@@ -1350,22 +1430,22 @@
 
         function getConnectionWidth(relationshipType) {
             const widths = {
-                'high-risk': 4,      // Thicker for high risk
-                'geographic': 3,     // Medium for geographic
-                'event-type': 3,     // Medium for event type
-                'related': 2         // Thin for general related
+                'high-risk': 7,      // Very thick for high risk
+                'geographic': 6,     // Thick for geographic
+                'event-type': 6,     // Thick for event type
+                'related': 5         // Medium for general related
             };
-            return widths[relationshipType] || 2;
+            return widths[relationshipType] || 5;
         }
 
         function getConnectionOpacity(relationshipType) {
             const opacities = {
-                'high-risk': 0.9,    // High opacity for high risk
-                'geographic': 0.8,   // Medium opacity for geographic
-                'event-type': 0.8,   // Medium opacity for event type
-                'related': 0.7       // Low opacity for general related
+                'high-risk': 1.0,    // Maximum opacity for high risk
+                'geographic': 0.9,   // High opacity for geographic
+                'event-type': 0.9,   // High opacity for event type
+                'related': 0.8       // Medium opacity for general related
             };
-            return opacities[relationshipType] || 0.7;
+            return opacities[relationshipType] || 0.8;
         }
 
         function clearAllConnections() {
@@ -1924,7 +2004,27 @@
                 alert('Map not ready yet');
                 return;
             }
-            document.getElementById('status').textContent = 'Map is working!';
+            
+            // Test with a simple marker like test-minimal.html
+            console.log('Testing simple marker creation...');
+            
+            const testMarkerElement = document.createElement('div');
+            testMarkerElement.style.cssText = `
+                background: red;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            `;
+            
+            const testMarker = new maplibregl.Marker(testMarkerElement)
+                .setLngLat([72.8777, 19.0760]) // Mumbai
+                .addTo(map);
+            
+            markers.push(testMarker);
+            
+            document.getElementById('status').textContent = 'Map test successful - simple marker added!';
             console.log('Map test successful');
             console.log('Markers count:', markers.length);
             console.log('Connections count:', connections.length);
@@ -1938,25 +2038,27 @@
                 return;
             }
 
-            // Sample Azure logs data with connections
+            // Sample Azure logs data with connections - enhanced for better risk detection
             const sampleLogs = [
                 {
                     "timeGenerated": "2025-01-15T10:00:00Z",
                     "operationName": "Sign-in activity",
                     "category": "AuditLogs",
                     "result": "Failure",
-                    "ipAddress": "1.2.3.4"
+                    "ipAddress": "1.2.3.4",
+                    "userAgent": "curl/7.68.0"
                 },
                 {
                     "timeGenerated": "2025-01-15T10:05:00Z",
                     "operationName": "Sign-in activity",
                     "category": "AuditLogs",
                     "result": "Failure",
-                    "ipAddress": "213.131.254.120"
+                    "ipAddress": "213.131.254.120",
+                    "userAgent": "bot scanner"
                 },
                 {
                     "timeGenerated": "2025-01-15T10:08:00Z",
-                    "category": "AzureFirewallApplicationRule",
+                    "category": "AzureFirewall",
                     "action": "Deny",
                     "sourceIp": "10.0.0.4"
                 },
@@ -1978,16 +2080,25 @@
                     "category": "ThreatIntelligence",
                     "severity": "High",
                     "ipAddress": "140.82.112.4"
+                },
+                {
+                    "timeGenerated": "2025-01-15T10:18:00Z",
+                    "category": "SignInLogs",
+                    "result": "Failure",
+                    "ipAddress": "198.51.100.10"
                 }
             ];
 
-            // Filter sample data for security risks only
-            logData = sampleLogs.filter(logEntry => {
-                const riskLevel = window.threatEngine.determineRiskLevel(logEntry);
-                return riskLevel === 'medium' || riskLevel === 'high';
-            });
+            // Clear existing data first
+            markers.forEach(marker => marker.remove());
+            markers = [];
+            clearAllConnections();
             
-            document.getElementById('status').textContent = `Loaded ${logData.length} security risk entries from sample data (filtered from ${sampleLogs.length} total)`;
+            // Use all sample data (don't filter too aggressively for demo)
+            logData = sampleLogs;
+            
+            console.log(`Loading ${logData.length} sample log entries`);
+            document.getElementById('status').textContent = `Loaded ${logData.length} sample security log entries`;
             generateMapFromLogs();
         }
 
@@ -2009,6 +2120,44 @@
             
             document.getElementById('status').textContent = 'Markers and connections cleared';
             console.log('Markers and connections cleared');
+        }
+
+        // Function to force show all markers - simplified approach
+        function forceShowMarkers() {
+            console.log(`Forcing visibility for ${markers.length} markers`);
+            markers.forEach(marker => {
+                const element = marker.getElement();
+                if (element) {
+                    element.style.display = 'block';
+                    element.style.visibility = 'visible';
+                    element.style.opacity = '1';
+                    element.style.zIndex = '1000';
+                    
+                    // Also ensure the marker div inside is visible
+                    const markerDiv = element.querySelector('div');
+                    if (markerDiv) {
+                        markerDiv.style.display = 'flex';
+                        markerDiv.style.visibility = 'visible';
+                        markerDiv.style.opacity = '1';
+                        markerDiv.style.zIndex = '1001';
+                    }
+                }
+            });
+            console.log('All markers forced to be visible');
+        }
+
+        // Function to force show all connection lines
+        function forceShowConnections() {
+            console.log(`Forcing visibility for ${connections.length} connection lines`);
+            connections.forEach(connection => {
+                if (map.getLayer(connection.id)) {
+                    // Force the layer to be visible and on top
+                    map.setLayoutProperty(connection.id, 'visibility', 'visible');
+                    map.setPaintProperty(connection.id, 'line-width', 8); // Make very thick
+                    map.setPaintProperty(connection.id, 'line-opacity', 1.0); // Maximum opacity
+                }
+            });
+            console.log('All connection lines forced to be visible and thick');
         }
 
         async function refreshThreatIntelligence() {
