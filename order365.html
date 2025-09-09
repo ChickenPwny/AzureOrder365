@@ -1,0 +1,2103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Azure Logs Map</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" crossorigin="anonymous" />
+    
+    <!-- Resume Popup Styles -->
+    <style>
+        .resume-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .resume-popup.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .resume-popup-content {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            width: 80vw;
+            max-width: 80vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .resume-popup-content.shrunk {
+            transform: scale(1);
+            width: 400px !important;
+            height: 300px !important;
+            max-width: 400px;
+            max-height: 300px;
+        }
+        
+        .resume-popup.show .resume-popup-content {
+            transform: scale(1);
+        }
+        
+        .resume-close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+        }
+        
+        .resume-close-btn:hover {
+            background: #c82333;
+        }
+        
+        .resume-shrink-btn {
+            position: absolute;
+            top: 15px;
+            right: 60px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+        }
+        
+        .resume-shrink-btn:hover {
+            background: #5a6268;
+        }
+        
+        .resume-trigger-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .resume-trigger-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        
+        h1 {
+            text-align: center;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        #map {
+            width: 100%;
+            height: 500px;
+            border: 2px solid #ccc;
+            margin: 20px 0;
+        }
+        
+        .status {
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin: 10px 0;
+        }
+        
+        .file-upload {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            text-align: center;
+            background: #f9f9f9;
+        }
+        
+        .file-upload.dragover {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        
+        /* Ensure connection lines are visible and elevated */
+        .maplibregl-canvas-container {
+            z-index: 1;
+        }
+        
+        /* Make connection lines more prominent */
+        .maplibregl-canvas-container canvas {
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+    <!-- Resume Popup -->
+    <div id="resumePopup" class="resume-popup">
+        <div class="resume-popup-content">
+            <button class="resume-close-btn" onclick="closeResumePopup()">&times;</button>
+            <button class="resume-shrink-btn" onclick="shrinkResumePopup()">−</button>
+            <iframe id="resumeFrame" src="resume.html" width="100%" height="100%" frameborder="0" style="min-height: 85vh; border-radius: 15px; border: none;"></iframe>
+        </div>
+    </div>
+    
+    <!-- Resume Trigger Button -->
+    <button class="resume-trigger-btn" onclick="openResumePopup()">📄 View Resume</button>
+    
+    <h1>Minimal Azure Logs Map</h1>
+    
+    <div class="file-upload" id="fileDropZone">
+        <h3>Upload Azure Security Logs</h3>
+        <input type="file" id="logFile" accept=".json,.csv" />
+        <p>Drag and drop your JSON or CSV file here</p>
+        <p><small>Supports JSON and CSV formats</small></p>
+    </div>
+    
+    <button onclick="testMap()">Test Map</button>
+    <button onclick="addSampleData()">Add Sample Data</button>
+    <button onclick="clearMarkers()">Clear Markers</button>
+    
+    <div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; background: #f8f9fa;">
+        <h4 style="margin: 0 0 10px 0;">🔗 Connection Controls</h4>
+        <button onclick="toggleConnections(!connectionsVisible)">Toggle Connections</button>
+        <button onclick="clearAllConnections()">Clear Connections</button>
+        <button onclick="showAllMarkers()">Show All Markers</button>
+        <button onclick="showAllConnections()">Show All Connections</button>
+        <button onclick="refreshThreatIntelligence()" style="background: #dc3545; color: white;">🛡️ Refresh Threat Intel</button>
+        <button onclick="threatEngine.updateThreatIntelligenceStats()" style="background: #28a745; color: white;">📊 Update Stats</button>
+        <span id="connectionStatus" style="margin-left: 10px; font-size: 12px; color: #666;"></span>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div id="ipLegend" style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; background: #f8f9fa; display: none;">
+        <h4 style="margin: 0 0 5px 0;">📍 IP Address Legend</h4>
+        <p style="margin: 0 0 15px 0; font-size: 12px; color: #666;">👆 Click on any IP to focus on that node and its connections</p>
+        <div id="legendContent" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px;"></div>
+    </div>
+    
+    <div id="connectionLegend" style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; background: #e8f4fd; display: none;">
+        <h4 style="margin: 0 0 5px 0; color: #0c5460;">🔗 Connection Line Types</h4>
+        <p style="margin: 0 0 15px 0; font-size: 12px; color: #666;">👆 Click on any connection type to filter the map</p>
+        <div id="connectionLegendContent" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+            <!-- Connection type items will be generated here -->
+        </div>
+        <div style="margin-top: 10px; padding: 8px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; font-size: 11px; color: #856404;">
+            💡 <strong>Tip:</strong> Line thickness indicates connection strength - thicker lines represent stronger relationships
+        </div>
+    </div>
+    
+    <!-- Threat Intelligence Dashboard -->
+    <div id="threatIntelPanel" style="margin: 20px 0; padding: 15px; border: 1px solid #dc3545; background: #f8d7da; display: block;">
+        <h4 style="margin: 0 0 15px 0; color: #721c24;">🛡️ Threat Intelligence Dashboard</h4>
+        
+        <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div id="ipApiStatus" style="width: 12px; height: 12px; border-radius: 50%; background: #6c757d;"></div>
+                <span style="font-size: 12px;">IP-API.com (Geolocation)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div id="abuseIpdbStatus" style="width: 12px; height: 12px; border-radius: 50%; background: #6c757d;"></div>
+                <span style="font-size: 12px;">AbuseIPDB (Reputation)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div id="virustotalStatus" style="width: 12px; height: 12px; border-radius: 50%; background: #6c757d;"></div>
+                <span style="font-size: 12px;">VirusTotal (Malware Detection)</span>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+            <div id="maliciousIPs" style="padding: 15px; background: #dc3545; color: white; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0; font-size: 24px;">0</h3>
+                <p style="margin: 5px 0 0 0; font-size: 12px;">Malicious IPs Detected</p>
+            </div>
+            <div id="suspiciousIPs" style="padding: 15px; background: #fd7e14; color: white; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0; font-size: 24px;">0</h3>
+                <p style="margin: 5px 0 0 0; font-size: 12px;">Suspicious IPs</p>
+            </div>
+            <div id="cleanIPs" style="padding: 15px; background: #28a745; color: white; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0; font-size: 24px;">0</h3>
+                <p style="margin: 5px 0 0 0; font-size: 12px;">Clean IPs</p>
+            </div>
+            <div id="threatScore" style="padding: 15px; background: #17a2b8; color: white; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0; font-size: 24px;">0%</h3>
+                <p style="margin: 5px 0 0 0; font-size: 12px;">Overall Threat Score</p>
+            </div>
+        </div>
+        
+        <div style="padding: 10px; background: #e2e3e5; border-radius: 6px; font-size: 12px; color: #495057;">
+            <strong>🔄 Real-time Threat Intelligence:</strong> This dashboard queries multiple open-source threat intelligence feeds including ThreatFox, AbuseIPDB, VirusTotal, and MISP to provide comprehensive security analysis of detected IP addresses.
+        </div>
+    </div>
+    
+    <div class="status" id="status">Ready to upload logs</div>
+
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js" crossorigin="anonymous"></script>
+    
+    <script>
+        // Resume Popup Functions
+        function openResumePopup() {
+            console.log('openResumePopup called');
+            const popup = document.getElementById('resumePopup');
+            console.log('Popup element:', popup);
+            if (popup) {
+                popup.classList.add('show');
+                console.log('Added show class to popup');
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            } else {
+                console.error('Resume popup element not found!');
+            }
+        }
+        
+        function closeResumePopup() {
+            const popup = document.getElementById('resumePopup');
+            popup.classList.remove('show');
+            document.body.style.overflow = 'auto'; // Restore scrolling
+        }
+        
+        function shrinkResumePopup() {
+            const popup = document.getElementById('resumePopup');
+            const content = document.querySelector('.resume-popup-content');
+            const iframe = document.getElementById('resumeFrame');
+            
+            // Toggle between full and shrunk states
+            if (content.classList.contains('shrunk')) {
+                // Expand back to full size
+                content.classList.remove('shrunk');
+                content.style.width = '80vw';
+                content.style.height = '90vh';
+                iframe.style.minHeight = '85vh';
+                iframe.style.height = '100%';
+            } else {
+                // Shrink to smaller size
+                content.classList.add('shrunk');
+                content.style.width = '400px';
+                content.style.height = '300px';
+                iframe.style.minHeight = '250px';
+                iframe.style.height = '100%';
+            }
+        }
+        
+        // Close popup when clicking outside the content
+        document.addEventListener('click', function(event) {
+            const popup = document.getElementById('resumePopup');
+            const content = document.querySelector('.resume-popup-content');
+            
+            if (event.target === popup && !content.contains(event.target)) {
+                closeResumePopup();
+            }
+        });
+        
+        // Close popup with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeResumePopup();
+            }
+        });
+        
+        // Auto-open popup function
+        function autoOpenResume() {
+            console.log('autoOpenResume called');
+            // Auto-open the resume popup after a short delay
+            setTimeout(() => {
+                console.log('Opening resume popup...');
+                openResumePopup();
+            }, 1500);
+        }
+
+        // Embedded Threat Analysis Engine
+        class ThreatAnalysisEngine {
+            constructor() {
+                this.threatIntelCache = new Map();
+            }
+
+            extractIPAddress(logEntry) {
+                const ipFields = [
+                    'ipAddress', 'IP address', 'clientIpAddress', 'sourceIp', 
+                    'destinationIp', 'clientIP', 'httpRequest.clientIpAddress'
+                ];
+
+                for (const field of ipFields) {
+                    if (field.includes('.')) {
+                        const parts = field.split('.');
+                        let value = logEntry;
+                        for (const part of parts) {
+                            value = value?.[part];
+                        }
+                        if (value && this.isValidIP(value)) {
+                            return value;
+                        }
+                    } else if (logEntry[field] && this.isValidIP(logEntry[field])) {
+                        return logEntry[field];
+                    }
+                }
+                return null;
+            }
+
+            isValidIP(ip) {
+                const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+                return ipRegex.test(ip);
+            }
+
+            analyzeLocalIP(ip) {
+                let lat, lng, city, country, region;
+                
+                if (this.isPrivateIP(ip)) {
+                    return this.getPrivateIPLocation(ip);
+                }
+                
+                const knownIPs = this.getKnownIPLocations();
+                if (knownIPs[ip]) {
+                    return knownIPs[ip];
+                }
+                
+                const ipHash = this.hashIP(ip);
+                const ipParts = ip.split('.').map(Number);
+                const firstOctet = ipParts[0];
+                
+                if (firstOctet >= 1 && firstOctet <= 14) {
+                    lat = 39.8283 + (ipHash % 20) - 10;
+                    lng = -98.5795 + ((ipHash >> 8) % 40) - 20;
+                    country = 'United States';
+                    region = 'North America';
+                    city = this.getRandomCity('US');
+                } else if (firstOctet >= 15 && firstOctet <= 31) {
+                    lat = 54.5260 + (ipHash % 15) - 7.5;
+                    lng = 15.2551 + ((ipHash >> 8) % 30) - 15;
+                    country = this.getRandomCountry('Europe');
+                    region = 'Europe';
+                    city = this.getRandomCity('Europe');
+                } else if (firstOctet >= 32 && firstOctet <= 47) {
+                    lat = 35.6762 + (ipHash % 20) - 10;
+                    lng = 139.6503 + ((ipHash >> 8) % 40) - 20;
+                    country = this.getRandomCountry('Asia');
+                    region = 'Asia';
+                    city = this.getRandomCity('Asia');
+                } else {
+                    lat = ((ipHash % 180) - 90);
+                    lng = (((ipHash >> 8) % 360) - 180);
+                    country = 'Unknown';
+                    region = 'Unknown';
+                    city = 'Unknown';
+                }
+                
+                return { lat, lng, city, country, region };
+            }
+
+            isPrivateIP(ip) {
+                const parts = ip.split('.').map(Number);
+                const firstOctet = parts[0];
+                const secondOctet = parts[1];
+                
+                return (
+                    (firstOctet === 10) ||
+                    (firstOctet === 172 && secondOctet >= 16 && secondOctet <= 31) ||
+                    (firstOctet === 192 && secondOctet === 168) ||
+                    (firstOctet === 127)
+                );
+            }
+
+            getPrivateIPLocation(ip) {
+                const ipHash = this.hashIP(ip);
+                return {
+                    lat: 19.0760 + (ipHash % 10) - 5,
+                    lng: 72.8777 + ((ipHash >> 8) % 20) - 10,
+                    city: 'Internal Network',
+                    country: 'Private Network',
+                    region: 'Internal'
+                };
+            }
+
+            getKnownIPLocations() {
+                return {
+                    '1.2.3.4': { lat: 6.5244, lng: 3.3792, city: 'Lagos', country: 'Nigeria', region: 'Africa' },
+                    '213.131.254.120': { lat: 55.7558, lng: 37.6176, city: 'Moscow', country: 'Russia', region: 'Europe' },
+                    '198.51.100.10': { lat: 55.7558, lng: 37.6176, city: 'Moscow', country: 'Russia', region: 'Europe' },
+                    '203.0.113.10': { lat: 47.6062, lng: -122.3321, city: 'Seattle', country: 'United States', region: 'North America' },
+                    '185.199.108.153': { lat: 51.5074, lng: -0.1278, city: 'London', country: 'United Kingdom', region: 'Europe' },
+                    '140.82.112.4': { lat: 37.7749, lng: -122.4194, city: 'San Francisco', country: 'United States', region: 'North America' },
+                    '8.8.8.8': { lat: 37.3861, lng: -122.0839, city: 'Mountain View', country: 'United States', region: 'North America' },
+                    '1.1.1.1': { lat: 37.7749, lng: -122.4194, city: 'San Francisco', country: 'United States', region: 'North America' },
+                    '185.220.101.12': { lat: 52.5200, lng: 13.4050, city: 'Berlin', country: 'Germany', region: 'Europe' }
+                };
+            }
+
+            getRandomCountry(region) {
+                const countries = {
+                    'US': ['United States', 'Canada', 'Mexico'],
+                    'Europe': ['Germany', 'France', 'United Kingdom', 'Italy', 'Spain'],
+                    'Asia': ['China', 'Japan', 'South Korea', 'India', 'Singapore']
+                };
+                const regionCountries = countries[region] || countries['US'];
+                return regionCountries[Math.floor(Math.random() * regionCountries.length)];
+            }
+
+            getRandomCity(region) {
+                const cities = {
+                    'US': ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix'],
+                    'Europe': ['London', 'Paris', 'Berlin', 'Madrid', 'Rome'],
+                    'Asia': ['Tokyo', 'Beijing', 'Seoul', 'Mumbai', 'Singapore']
+                };
+                const regionCities = cities[region] || cities['US'];
+                return regionCities[Math.floor(Math.random() * regionCities.length)];
+            }
+
+            hashIP(ip) {
+                let hash = 0;
+                for (let i = 0; i < ip.length; i++) {
+                    const char = ip.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash);
+            }
+
+            determineRiskLevel(logEntry) {
+                let riskScore = 0;
+                
+                // High risk indicators
+                if (logEntry.result === 'Failure' && logEntry.category === 'AuditLogs') {
+                    riskScore += 30;
+                }
+                
+                if (logEntry.category === 'SignInLogs' && logEntry.result === 'Failure') {
+                    riskScore += 30;
+                }
+                
+                if (logEntry.category === 'AuditLogs' && logEntry.operationName?.toLowerCase().includes('admin')) {
+                    riskScore += 25;
+                }
+                
+                if (logEntry.category === 'AzureFirewall' && logEntry.action === 'Deny') {
+                    riskScore += 35;
+                }
+                
+                if (logEntry.category === 'ThreatIntelligence' && logEntry.severity === 'High') {
+                    riskScore += 50;
+                }
+                
+                // Check for suspicious user agents
+                if (logEntry.userAgent && 
+                    (logEntry.userAgent.includes('curl') || 
+                     logEntry.userAgent.includes('bot') ||
+                     logEntry.userAgent.includes('scanner'))) {
+                    riskScore += 20;
+                }
+                
+                // Check for suspicious status messages
+                if (logEntry.status?.additionalDetails?.toLowerCase().includes('suspicious')) {
+                    riskScore += 25;
+                }
+                
+                if (riskScore >= 60) return 'high';
+                if (riskScore >= 30) return 'medium';
+                if (riskScore >= 10) return 'low';
+                return 'none';
+            }
+
+            parseCSV(content) {
+                const lines = content.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                const data = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim()) {
+                        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                        const obj = {};
+                        headers.forEach((header, index) => {
+                            obj[header] = values[index] || '';
+                        });
+                        data.push(obj);
+                    }
+                }
+                return data;
+            }
+
+            // Threat Intelligence Methods
+            async getThreatIntelligence(ip) {
+                // Check cache first
+                if (this.threatIntelCache.has(`threat_${ip}`)) {
+                    return this.threatIntelCache.get(`threat_${ip}`);
+                }
+
+                // Initialize threat data with local analysis
+                const threatData = {
+                    ip: ip,
+                    isMalicious: false,
+                    threatScore: 0,
+                    reputation: 'clean',
+                    malwareFamilies: [],
+                    lastSeen: null,
+                    abuseReports: 0,
+                    sources: ['Local Analysis'],
+                    confidence: 0,
+                    country: null,
+                    isp: null,
+                    usageType: null,
+                    lastReported: null
+                };
+
+                // Start with local analysis
+                const localThreatScore = this.analyzeLocalThreatPatterns(ip);
+                threatData.threatScore = localThreatScore;
+                threatData.confidence = 30; // Low confidence for local analysis
+
+                // Try to get real threat intelligence from multiple sources
+                const threatPromises = [
+                    this.checkThreatFox(ip),
+                    this.checkAbuseIPDB(ip),
+                    this.checkVirusTotal(ip),
+                    this.checkMISPFeeds(ip)
+                ];
+
+                try {
+                    const results = await Promise.allSettled(threatPromises);
+                    
+                    results.forEach((result, index) => {
+                        if (result.status === 'fulfilled' && result.value) {
+                            const sourceData = result.value;
+                            
+                            // Merge threat intelligence data
+                            if (sourceData.threatScore > threatData.threatScore) {
+                                threatData.threatScore = sourceData.threatScore;
+                            }
+                            
+                            if (sourceData.isMalicious) {
+                                threatData.isMalicious = true;
+                            }
+                            
+                            if (sourceData.malwareFamilies && sourceData.malwareFamilies.length > 0) {
+                                threatData.malwareFamilies = [...new Set([...threatData.malwareFamilies, ...sourceData.malwareFamilies])];
+                            }
+                            
+                            if (sourceData.abuseReports > threatData.abuseReports) {
+                                threatData.abuseReports = sourceData.abuseReports;
+                            }
+                            
+                            if (sourceData.sources) {
+                                threatData.sources = [...new Set([...threatData.sources, ...sourceData.sources])];
+                            }
+                            
+                            if (sourceData.confidence > threatData.confidence) {
+                                threatData.confidence = sourceData.confidence;
+                            }
+                            
+                            // Update additional fields
+                            if (sourceData.country) threatData.country = sourceData.country;
+                            if (sourceData.isp) threatData.isp = sourceData.isp;
+                            if (sourceData.usageType) threatData.usageType = sourceData.usageType;
+                            if (sourceData.lastReported) threatData.lastReported = sourceData.lastReported;
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.warn('Error fetching threat intelligence:', error);
+                }
+
+                // Determine final reputation based on combined data
+                threatData.reputation = threatData.threatScore > 75 ? 'malicious' : 
+                                      threatData.threatScore > 50 ? 'suspicious' : 'clean';
+
+                // Cache the result
+                this.threatIntelCache.set(`threat_${ip}`, threatData);
+                return threatData;
+            }
+
+            analyzeLocalThreatPatterns(ip) {
+                let score = 0;
+                
+                // Check for known malicious IP patterns
+                if (this.isPrivateIP(ip)) {
+                    score += 10; // Private IPs are slightly suspicious in logs
+                }
+                
+                // Check for common attack patterns
+                const suspiciousPatterns = [
+                    /^10\./,  // Private range
+                    /^192\.168\./,  // Private range
+                    /^172\.(1[6-9]|2[0-9]|3[0-1])\./,  // Private range
+                ];
+                
+                suspiciousPatterns.forEach(pattern => {
+                    if (pattern.test(ip)) {
+                        score += 5;
+                    }
+                });
+                
+                return Math.min(score, 30); // Cap at 30 for local analysis
+            }
+
+            // Real Threat Intelligence API Methods
+            async checkThreatFox(ip) {
+                try {
+                    // ThreatFox API - Free, no API key required
+                    const response = await fetch(`https://threatfox-api.abuse.ch/api/v1/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            query: 'search_ioc',
+                            search_term: ip
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.query_status === 'ok' && data.data && data.data.length > 0) {
+                            const threatInfo = data.data[0];
+                            return {
+                                threatScore: 85,
+                                isMalicious: true,
+                                malwareFamilies: [threatInfo.malware_print || 'Unknown Malware'],
+                                abuseReports: 1,
+                                sources: ['ThreatFox'],
+                                confidence: 90,
+                                lastReported: threatInfo.first_seen,
+                                country: threatInfo.country
+                            };
+                        }
+                    }
+                } catch (error) {
+                    console.warn('ThreatFox API error:', error);
+                }
+                return null;
+            }
+
+            async checkAbuseIPDB(ip) {
+                try {
+                    // AbuseIPDB API - Free tier available (1000 requests/day)
+                    // Note: You'll need to add your API key here
+                    const apiKey = 'YOUR_ABUSEIPDB_API_KEY'; // Replace with your API key
+                    
+                    if (apiKey === 'YOUR_ABUSEIPDB_API_KEY') {
+                        // Fallback to mock data for demo
+                        return this.getMockAbuseIPDBData(ip);
+                    }
+                    
+                    const response = await fetch(`https://api.abuseipdb.com/api/v2/check?ipAddress=${ip}&maxAgeInDays=90&verbose`, {
+                        headers: {
+                            'Key': apiKey,
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.data) {
+                            const abuseData = data.data;
+                            return {
+                                threatScore: Math.min(abuseData.abuseConfidencePercentage || 0, 100),
+                                isMalicious: abuseData.abuseConfidencePercentage > 75,
+                                abuseReports: abuseData.totalReports || 0,
+                                sources: ['AbuseIPDB'],
+                                confidence: 85,
+                                country: abuseData.countryName,
+                                isp: abuseData.isp,
+                                usageType: abuseData.usageType,
+                                lastReported: abuseData.lastReportedAt
+                            };
+                        }
+                    }
+                } catch (error) {
+                    console.warn('AbuseIPDB API error:', error);
+                }
+                return null;
+            }
+
+            async checkVirusTotal(ip) {
+                try {
+                    // VirusTotal API - Free tier available (500 requests/day)
+                    // Note: You'll need to add your API key here
+                    const apiKey = 'YOUR_VIRUSTOTAL_API_KEY'; // Replace with your API key
+                    
+                    if (apiKey === 'YOUR_VIRUSTOTAL_API_KEY') {
+                        // Fallback to mock data for demo
+                        return this.getMockVirusTotalData(ip);
+                    }
+                    
+                    const response = await fetch(`https://www.virustotal.com/vtapi/v2/ip-address/report?apikey=${apiKey}&ip=${ip}`);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.response_code === 1) {
+                            const detections = data.detected_urls ? data.detected_urls.length : 0;
+                            const threatScore = Math.min((detections / 10) * 100, 100);
+                            
+                            return {
+                                threatScore: threatScore,
+                                isMalicious: detections > 0,
+                                malwareFamilies: data.detected_urls ? data.detected_urls.map(url => url.scan_result) : [],
+                                sources: ['VirusTotal'],
+                                confidence: 80,
+                                country: data.country,
+                                lastReported: data.scan_date
+                            };
+                        }
+                    }
+                } catch (error) {
+                    console.warn('VirusTotal API error:', error);
+                }
+                return null;
+            }
+
+            async checkMISPFeeds(ip) {
+                try {
+                    // MISP (Malware Information Sharing Platform) - Free feeds
+                    // Using a public MISP instance for demo
+                    const response = await fetch(`https://misp.renater.fr/events/restSearch`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            value: ip,
+                            type: 'ip-dst'
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.response && data.response.length > 0) {
+                            const events = data.response;
+                            const threatScore = Math.min(events.length * 20, 100);
+                            
+                            return {
+                                threatScore: threatScore,
+                                isMalicious: events.length > 0,
+                                malwareFamilies: events.map(event => event.Event.info || 'MISP Event'),
+                                sources: ['MISP'],
+                                confidence: 75,
+                                lastReported: events[0].Event.date
+                            };
+                        }
+                    }
+                } catch (error) {
+                    console.warn('MISP API error:', error);
+                }
+                return null;
+            }
+
+            // Mock data methods for demo purposes
+            getMockAbuseIPDBData(ip) {
+                // Simulate some mock data for demo
+                const mockScore = Math.random() * 30; // 0-30 for demo
+                return {
+                    threatScore: mockScore,
+                    isMalicious: mockScore > 20,
+                    abuseReports: Math.floor(mockScore / 5),
+                    sources: ['AbuseIPDB (Mock)'],
+                    confidence: 60,
+                    country: 'Unknown',
+                    isp: 'Unknown ISP',
+                    usageType: 'Unknown'
+                };
+            }
+
+            getMockVirusTotalData(ip) {
+                // Simulate some mock data for demo
+                const mockScore = Math.random() * 25; // 0-25 for demo
+                return {
+                    threatScore: mockScore,
+                    isMalicious: mockScore > 15,
+                    malwareFamilies: mockScore > 15 ? ['Mock Malware'] : [],
+                    sources: ['VirusTotal (Mock)'],
+                    confidence: 55,
+                    country: 'Unknown'
+                };
+            }
+
+            // Update threat intelligence dashboard
+            updateThreatIntelligenceStats() {
+                console.log('Updating threat intelligence stats, markers count:', markers.length);
+                
+                const maliciousCount = markers.filter(m => m.threatData && m.threatData.reputation === 'malicious').length;
+                const suspiciousCount = markers.filter(m => m.threatData && m.threatData.reputation === 'suspicious').length;
+                const cleanCount = markers.filter(m => m.threatData && m.threatData.reputation === 'clean').length;
+                
+                const totalThreatScore = markers.reduce((sum, m) => sum + (m.threatData ? m.threatData.threatScore : 0), 0);
+                const avgThreatScore = markers.length > 0 ? Math.round(totalThreatScore / markers.length) : 0;
+                
+                console.log('Threat stats:', { maliciousCount, suspiciousCount, cleanCount, avgThreatScore });
+                
+                // Update dashboard elements
+                const maliciousEl = document.getElementById('maliciousIPs');
+                const suspiciousEl = document.getElementById('suspiciousIPs');
+                const cleanEl = document.getElementById('cleanIPs');
+                const scoreEl = document.getElementById('threatScore');
+                
+                if (maliciousEl) maliciousEl.querySelector('h3').textContent = maliciousCount;
+                if (suspiciousEl) suspiciousEl.querySelector('h3').textContent = suspiciousCount;
+                if (cleanEl) cleanEl.querySelector('h3').textContent = cleanCount;
+                if (scoreEl) scoreEl.querySelector('h3').textContent = avgThreatScore + '%';
+                
+                // Show/hide the panel based on data
+                const panel = document.getElementById('threatIntelPanel');
+                if (panel) {
+                    panel.style.display = 'block';
+                    console.log('Threat intelligence panel displayed');
+                } else {
+                    console.log('Threat intelligence panel not found');
+                }
+            }
+        }
+
+        // Create global instance IMMEDIATELY
+        window.threatEngine = new ThreatAnalysisEngine();
+
+        let map = null;
+        let markers = [];
+        let logData = [];
+        let connections = [];
+        let connectionsVisible = true;
+        const MAX_TOTAL_CONNECTIONS = 100; // Global limit to prevent memory issues
+
+        // Initialize map when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing map...');
+            
+            // Prevent multiple map creation
+            if (map) {
+                console.log('Map already exists, skipping creation');
+                return;
+            }
+            
+            try {
+                map = new maplibregl.Map({
+                    container: 'map',
+                    style: {
+                        version: 8,
+                        sources: {
+                            'raster-tiles': {
+                                type: 'raster',
+                                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                                tileSize: 256
+                            }
+                        },
+                        layers: [{
+                            id: 'simple-tiles',
+                            type: 'raster',
+                            source: 'raster-tiles'
+                        }]
+                    },
+                    center: [0, 20],
+                    zoom: 2
+                });
+
+                map.on('load', function() {
+                    console.log('Map loaded successfully!');
+                    document.getElementById('status').textContent = 'Map loaded - ready to upload logs';
+                    
+                    // Add navigation controls
+                    map.addControl(new maplibregl.NavigationControl());
+                    
+                    // Ensure connections are enabled by default
+                    connectionsVisible = true;
+                });
+
+                map.on('error', function(e) {
+                    console.error('Map error:', e);
+                    document.getElementById('status').textContent = 'Map error: ' + e.error.message;
+                });
+
+                // Setup file upload
+                setupFileUpload();
+
+            } catch (error) {
+                console.error('Error creating map:', error);
+                document.getElementById('status').textContent = 'Error: ' + error.message;
+            }
+        });
+
+        function setupFileUpload() {
+            const fileInput = document.getElementById('logFile');
+            const dropZone = document.getElementById('fileDropZone');
+
+            // File input change
+            fileInput.addEventListener('change', handleFileUpload);
+
+            // Drag and drop
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handleFileUpload({ target: { files: files } });
+                }
+            });
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('status').textContent = 'Reading file...';
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const content = e.target.result;
+                    let data;
+
+                    if (file.name.endsWith('.json')) {
+                        data = JSON.parse(content);
+                    } else if (file.name.endsWith('.csv')) {
+                        data = window.threatEngine.parseCSV(content);
+                    } else {
+                        throw new Error('Unsupported file format');
+                    }
+
+                    // Filter for security risks only at parsing level
+                    const allData = Array.isArray(data) ? data : [data];
+                    logData = allData.filter(logEntry => {
+                        const riskLevel = window.threatEngine.determineRiskLevel(logEntry);
+                        return riskLevel === 'medium' || riskLevel === 'high';
+                    });
+                    
+                    document.getElementById('status').textContent = `Loaded ${logData.length} security risk entries (filtered from ${allData.length} total logs)`;
+                    
+                    // Auto-generate map
+                    generateMapFromLogs();
+                    
+                } catch (error) {
+                    document.getElementById('status').textContent = 'Error: ' + error.message;
+                    console.error('File read error:', error);
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+        async function generateMapFromLogs() {
+            if (!map || logData.length === 0) return;
+
+            // Clear existing markers and connections
+            markers.forEach(marker => marker.remove());
+            markers = [];
+            clearAllConnections();
+
+            document.getElementById('status').textContent = 'Generating map with threat intelligence...';
+
+            let processedCount = 0;
+            const totalCount = logData.length;
+
+            // Process entries with threat intelligence (async)
+            for (let index = 0; index < logData.length; index++) {
+                const logEntry = logData[index];
+                const ip = window.threatEngine.extractIPAddress(logEntry);
+                if (ip && window.threatEngine.isValidIP(ip)) {
+                    const location = window.threatEngine.analyzeLocalIP(ip);
+                    const riskLevel = window.threatEngine.determineRiskLevel(logEntry);
+                    
+                    // Create marker with threat intelligence (async)
+                    const marker = await createMarker(location, logEntry, ip, riskLevel);
+                    
+                    // Create connections to related markers
+                    createIPConnections(ip, marker.riskLevel, marker);
+                }
+                processedCount++;
+                
+                // Update status periodically
+                if (processedCount % 10 === 0) {
+                    document.getElementById('status').textContent = `Processing ${processedCount}/${totalCount} entries with threat intelligence...`;
+                }
+            }
+
+            // Ensure all connections are visible after creation
+            setTimeout(() => {
+                connections.forEach(connection => {
+                    if (map.getLayer(connection.id)) {
+                        map.setLayoutProperty(connection.id, 'visibility', 'visible');
+                    }
+                });
+                connectionsVisible = true;
+                
+                // Update status display
+                const statusElement = document.getElementById('connectionStatus');
+                if (statusElement) {
+                    statusElement.textContent = `Connections: Visible (${connections.length} total)`;
+                }
+            }, 100);
+
+            // Update status immediately
+            document.getElementById('status').textContent = `Security risks map generated with ${markers.length} risk markers and ${connections.length} connections (with threat intelligence)`;
+            
+            // Update connection status
+            const statusElement = document.getElementById('connectionStatus');
+            if (statusElement) {
+                statusElement.textContent = `Connections: ${connectionsVisible ? 'Visible' : 'Hidden'} (${connections.length} total)`;
+            }
+            
+            // Ensure connection legend is visible when there are connections
+            const connectionLegendElement = document.getElementById('connectionLegend');
+            if (connectionLegendElement && connections.length > 0) {
+                connectionLegendElement.style.display = 'block';
+            }
+            
+            // Update IP legend
+            try {
+                updateIPLegend();
+                console.log('IP legend updated successfully');
+            } catch (error) {
+                console.error('Error updating IP legend:', error);
+            }
+        }
+
+        async function createMarker(location, logEntry, ip, riskLevel) {
+            const colors = {
+                high: '#dc3545',
+                medium: '#fd7e14',
+                low: '#28a745',
+                info: '#17a2b8',
+                none: '#6c757d'  // Gray for no risk
+            };
+
+            // Get threat intelligence data
+            const threatData = await threatEngine.getThreatIntelligence(ip);
+            
+            // Update risk level based on threat intelligence
+            let enhancedRiskLevel = riskLevel;
+            if (threatData.reputation === 'malicious') {
+                enhancedRiskLevel = 'high';
+            } else if (threatData.reputation === 'suspicious' && riskLevel !== 'high') {
+                enhancedRiskLevel = 'medium';
+            }
+
+            // Debug: Log the risk level and color
+            console.log(`Creating marker for IP ${ip} with risk level: ${enhancedRiskLevel}, color: ${colors[enhancedRiskLevel]}, threat score: ${threatData.threatScore}`);
+
+            const markerElement = document.createElement('div');
+
+            // Set styles individually to ensure they stick
+            markerElement.style.width = '25px';
+            markerElement.style.height = '25px';
+            markerElement.style.borderRadius = '50%';
+            markerElement.style.border = '3px solid white';
+            markerElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+            markerElement.style.cursor = 'pointer';
+            markerElement.style.backgroundColor = colors[enhancedRiskLevel];
+            markerElement.style.background = colors[enhancedRiskLevel];
+
+            // Also set as inline style attribute
+            markerElement.setAttribute('style', 
+                `width: 25px; height: 25px; border-radius: 50%; border: 3px solid white; ` +
+                `box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer; ` +
+                `background-color: ${colors[enhancedRiskLevel]} !important; background: ${colors[enhancedRiskLevel]} !important;`
+            );
+
+            // Enhanced popup content with threat intelligence
+            const threatInfo = threatData.reputation !== 'clean' ? `
+                <div style="margin-top: 10px; padding: 8px; background: ${threatData.reputation === 'malicious' ? '#f8d7da' : '#fff3cd'}; border-radius: 4px; border: 1px solid ${threatData.reputation === 'malicious' ? '#f5c6cb' : '#ffeaa7'};">
+                    <strong>🛡️ Threat Intelligence:</strong><br>
+                    <span style="color: ${threatData.reputation === 'malicious' ? '#721c24' : '#856404'};">
+                        Reputation: ${threatData.reputation.toUpperCase()}<br>
+                        Threat Score: ${threatData.threatScore}%<br>
+                        Sources: ${threatData.sources.join(', ')}<br>
+                        ${threatData.malwareFamilies.length > 0 ? `Malware: ${threatData.malwareFamilies.join(', ')}<br>` : ''}
+                        ${threatData.abuseReports > 0 ? `Abuse Reports: ${threatData.abuseReports}<br>` : ''}
+                    </span>
+                </div>
+            ` : '';
+
+            const popupContent = `
+                <div style="font-family: Arial, sans-serif; max-width: 300px;">
+                    <h4 style="margin: 0 0 10px 0; color: ${colors[enhancedRiskLevel]};">${enhancedRiskLevel.toUpperCase()} RISK</h4>
+                    <p><strong>IP:</strong> ${ip}</p>
+                    <p><strong>Location:</strong> ${location.city}, ${location.country}</p>
+                    <p><strong>Event:</strong> ${logEntry.operationName || logEntry.category || 'Security Event'}</p>
+                    <p><strong>Result:</strong> ${logEntry.result || logEntry.action || 'Unknown'}</p>
+                    <p><strong>User:</strong> ${logEntry.userPrincipalName || logEntry.caller || 'Unknown'}</p>
+                    ${threatInfo}
+                </div>
+            `;
+
+            const marker = new maplibregl.Marker(markerElement)
+                .setLngLat([location.lng, location.lat])
+                .setPopup(new maplibregl.Popup().setHTML(popupContent))
+                .addTo(map);
+            
+            // Store additional data for connections
+            marker.ip = ip;
+            marker.riskLevel = enhancedRiskLevel;
+            marker.location = location;
+            marker.logEntry = logEntry;
+            marker.threatData = threatData; // Store threat intelligence data
+            
+            markers.push(marker);
+            
+            // Update threat intelligence dashboard
+            threatEngine.updateThreatIntelligenceStats();
+            
+            return marker;
+        }
+
+        // Connection Functions
+        function createIPConnections(ip, riskLevel, currentMarker) {
+            // Limit connections to prevent timeout - only connect to most relevant markers
+            const maxConnections = 5;
+            
+            // Find other markers with similar threat characteristics
+            const relatedMarkers = markers.filter(marker => {
+                if (marker.ip === ip) return false;
+                
+                // Connect high risk to high risk
+                if (riskLevel === 'high' && marker.riskLevel === 'high') {
+                    return true;
+                }
+                
+                // Connect medium risk to medium/high risk
+                if (riskLevel === 'medium' && (marker.riskLevel === 'medium' || marker.riskLevel === 'high')) {
+                    return true;
+                }
+                
+                // Connect IPs from same country
+                if (currentMarker.location.country === marker.location.country) {
+                    return true;
+                }
+                
+                // Connect IPs with similar event types
+                if (currentMarker.logEntry.category === marker.logEntry.category) {
+                    return true;
+                }
+                
+                return false;
+            });
+
+            // Limit the number of connections to prevent timeout
+            const limitedMarkers = relatedMarkers.slice(0, maxConnections);
+
+            // Create connection lines
+            limitedMarkers.forEach(relatedMarker => {
+                const relationshipType = determineRelationshipType(currentMarker, relatedMarker);
+                createConnectionLine(currentMarker, relatedMarker, relationshipType);
+            });
+        }
+
+        function determineRelationshipType(marker1, marker2) {
+            // High risk connections
+            if (marker1.riskLevel === 'high' && marker2.riskLevel === 'high') {
+                return 'high-risk';
+            }
+            
+            // Same country connections
+            if (marker1.location.country === marker2.location.country) {
+                return 'geographic';
+            }
+            
+            // Same event type connections
+            if (marker1.logEntry.category === marker2.logEntry.category) {
+                return 'event-type';
+            }
+            
+            return 'related';
+        }
+
+        function createConnectionLine(fromMarker, toMarker, relationshipType) {
+            try {
+                // Check global connection limit
+                if (connections.length >= MAX_TOTAL_CONNECTIONS) {
+                    console.log('Maximum connections reached, skipping new connection');
+                    return null;
+                }
+                
+                const fromLngLat = fromMarker.getLngLat();
+                const toLngLat = toMarker.getLngLat();
+                
+                // Create a unique ID based on marker positions to prevent duplicates
+                const lineId = `connection-${Math.round(fromLngLat.lng * 1000)}-${Math.round(fromLngLat.lat * 1000)}-${Math.round(toLngLat.lng * 1000)}-${Math.round(toLngLat.lat * 1000)}`;
+                
+                // Check if connection already exists
+                if (map.getSource(lineId)) {
+                    return null;
+                }
+                
+                // Add source
+                map.addSource(lineId, {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    properties: {
+                        relationshipType: relationshipType,
+                        from: [fromLngLat.lng, fromLngLat.lat],
+                        to: [toLngLat.lng, toLngLat.lat]
+                    },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [
+                            [fromLngLat.lng, fromLngLat.lat],
+                            [toLngLat.lng, toLngLat.lat]
+                        ]
+                    }
+                }
+            });
+
+            // Add layer with proper z-index elevation
+            map.addLayer({
+                id: lineId,
+                type: 'line',
+                source: lineId,
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round',
+                    'visibility': connectionsVisible ? 'visible' : 'none'
+                },
+                paint: {
+                    'line-color': getConnectionColor(relationshipType),
+                    'line-width': Math.max(getConnectionWidth(relationshipType), 2), // Ensure minimum width
+                    'line-opacity': Math.max(getConnectionOpacity(relationshipType), 0.6) // Ensure minimum opacity
+                }
+            }, 'simple-tiles'); // Insert before the base tiles layer to elevate above map
+
+            const connection = {
+                id: lineId,
+                relationshipType: relationshipType,
+                remove: () => {
+                    if (map.getLayer(lineId)) {
+                        map.removeLayer(lineId);
+                    }
+                    if (map.getSource(lineId)) {
+                        map.removeSource(lineId);
+                    }
+                }
+            };
+
+            connections.push(connection);
+            console.log('Created connection:', lineId, 'type:', relationshipType);
+            return connection;
+            
+            } catch (error) {
+                console.error('Error creating connection line:', error);
+                return null;
+            }
+        }
+
+        function getConnectionColor(relationshipType) {
+            const colors = {
+                'high-risk': '#dc3545',      // Red - High risk connections
+                'geographic': '#17a2b8',     // Cyan - Same country/region
+                'event-type': '#6f42c1',     // Purple - Same event type
+                'related': '#6c757d'         // Gray - General related
+            };
+            return colors[relationshipType] || colors['related'];
+        }
+
+        function getConnectionWidth(relationshipType) {
+            const widths = {
+                'high-risk': 4,      // Thicker for high risk
+                'geographic': 3,     // Medium for geographic
+                'event-type': 3,     // Medium for event type
+                'related': 2         // Thin for general related
+            };
+            return widths[relationshipType] || 2;
+        }
+
+        function getConnectionOpacity(relationshipType) {
+            const opacities = {
+                'high-risk': 0.9,    // High opacity for high risk
+                'geographic': 0.8,   // Medium opacity for geographic
+                'event-type': 0.8,   // Medium opacity for event type
+                'related': 0.7       // Low opacity for general related
+            };
+            return opacities[relationshipType] || 0.7;
+        }
+
+        function clearAllConnections() {
+            connections.forEach(connection => {
+                connection.remove();
+            });
+            connections = [];
+        }
+
+        function toggleConnections(show) {
+            connections.forEach(connection => {
+                if (map.getLayer(connection.id)) {
+                    map.setLayoutProperty(connection.id, 'visibility', show ? 'visible' : 'none');
+                }
+            });
+            connectionsVisible = show;
+            
+            // Update status display
+            const statusElement = document.getElementById('connectionStatus');
+            if (statusElement) {
+                statusElement.textContent = `Connections: ${show ? 'Visible' : 'Hidden'} (${connections.length} total)`;
+            }
+        }
+
+        function updateIPLegend() {
+            const legendElement = document.getElementById('ipLegend');
+            const legendContent = document.getElementById('legendContent');
+            const connectionLegendElement = document.getElementById('connectionLegend');
+            
+            if (markers.length === 0) {
+                legendElement.style.display = 'none';
+                connectionLegendElement.style.display = 'none';
+                return;
+            }
+            
+            // Show legends
+            legendElement.style.display = 'block';
+            connectionLegendElement.style.display = 'block';
+            
+            // Clear existing content
+            legendContent.innerHTML = '';
+            
+            // Group markers by IP to avoid duplicates
+            const ipMap = new Map();
+            markers.forEach(marker => {
+                if (!ipMap.has(marker.ip)) {
+                    ipMap.set(marker.ip, marker);
+                }
+            });
+            
+            // Create legend items
+            ipMap.forEach((marker, ip) => {
+                const legendItem = document.createElement('div');
+                legendItem.setAttribute('data-ip', ip); // Add data attribute for easier selection
+                legendItem.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    padding: 8px;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 5px;
+                    margin: 2px 0;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    user-select: none;
+                `;
+                
+                // Add hover effect
+                legendItem.addEventListener('mouseenter', () => {
+                    legendItem.style.background = '#f8f9fa';
+                    legendItem.style.borderColor = '#007bff';
+                    legendItem.style.transform = 'translateY(-1px)';
+                    legendItem.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                });
+                
+                legendItem.addEventListener('mouseleave', () => {
+                    if (!legendItem.classList.contains('selected')) {
+                        legendItem.style.background = 'white';
+                        legendItem.style.borderColor = '#ddd';
+                        legendItem.style.transform = 'translateY(0)';
+                        legendItem.style.boxShadow = 'none';
+                    }
+                });
+                
+                // Add click handler
+                legendItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Clicked on IP:', ip);
+                    filterMarkersByIP(ip);
+                    updateLegendSelection(ip);
+                });
+                
+                const colorDot = document.createElement('div');
+                colorDot.style.cssText = `
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    margin-right: 10px;
+                    background: ${getRiskColor(marker.riskLevel)};
+                `;
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.style.cssText = `
+                    flex: 1;
+                    font-size: 12px;
+                `;
+                
+                infoDiv.innerHTML = `
+                    <div style="font-weight: bold; color: #333;">${ip}</div>
+                    <div style="color: #666;">
+                        ${marker.location.city}, ${marker.location.country}
+                    </div>
+                    <div style="color: #888; font-size: 11px;">
+                        ${marker.riskLevel.toUpperCase()} RISK • ${marker.logEntry.category || 'Unknown'}
+                    </div>
+                `;
+                
+                // Add click indicator
+                const clickIndicator = document.createElement('div');
+                clickIndicator.style.cssText = `
+                    font-size: 11px;
+                    color: #007bff;
+                    margin-left: 8px;
+                    opacity: 0.8;
+                    font-weight: bold;
+                    background: #e3f2fd;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    border: 1px solid #bbdefb;
+                `;
+                clickIndicator.textContent = '👆 CLICK';
+                
+                legendItem.appendChild(colorDot);
+                legendItem.appendChild(infoDiv);
+                legendItem.appendChild(clickIndicator);
+                legendContent.appendChild(legendItem);
+            });
+            
+            // Update connection legend
+            try {
+                updateConnectionLegend();
+                console.log('Connection legend updated successfully');
+            } catch (error) {
+                console.error('Error updating connection legend:', error);
+            }
+        }
+
+        function getRiskColor(riskLevel) {
+            const colors = {
+                high: '#dc3545',
+                medium: '#fd7e14',
+                low: '#28a745',
+                info: '#17a2b8',
+                none: '#6c757d'  // Gray for no risk
+            };
+            return colors[riskLevel] || colors['info'];
+        }
+
+        function updateConnectionLegend() {
+            console.log('updateConnectionLegend called');
+            const connectionLegendContent = document.getElementById('connectionLegendContent');
+            console.log('connectionLegendContent element:', connectionLegendContent);
+            
+            if (!connectionLegendContent) {
+                console.error('connectionLegendContent element not found!');
+                return;
+            }
+            
+            connectionLegendContent.innerHTML = '';
+            
+            // Define connection types with their properties
+            const connectionTypes = [
+                {
+                    type: 'high-risk',
+                    color: '#dc3545',
+                    width: 4,
+                    name: 'High Risk Connections',
+                    description: 'Connects high-risk IPs'
+                },
+                {
+                    type: 'geographic',
+                    color: '#17a2b8',
+                    width: 3,
+                    name: 'Geographic Connections',
+                    description: 'Same country/region'
+                },
+                {
+                    type: 'event-type',
+                    color: '#6f42c1',
+                    width: 3,
+                    name: 'Event Type Connections',
+                    description: 'Same event category'
+                },
+                {
+                    type: 'related',
+                    color: '#6c757d',
+                    width: 2,
+                    name: 'General Related',
+                    description: 'Other relationships'
+                }
+            ];
+            
+            console.log('Creating', connectionTypes.length, 'connection legend items');
+            
+            // Create clickable connection type items
+            connectionTypes.forEach((connectionType, index) => {
+                console.log('Creating item', index + 1, ':', connectionType.type);
+                
+                const legendItem = document.createElement('div');
+                legendItem.setAttribute('data-connection-type', connectionType.type);
+                legendItem.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    padding: 8px;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    user-select: none;
+                    margin: 2px 0;
+                `;
+                
+                // Add hover effect
+                legendItem.addEventListener('mouseenter', () => {
+                    console.log('Hovering over:', connectionType.type);
+                    legendItem.style.background = '#f8f9fa';
+                    legendItem.style.borderColor = connectionType.color;
+                    legendItem.style.transform = 'translateY(-1px)';
+                    legendItem.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                });
+                
+                legendItem.addEventListener('mouseleave', () => {
+                    if (!legendItem.classList.contains('selected')) {
+                        legendItem.style.background = 'white';
+                        legendItem.style.borderColor = '#ddd';
+                        legendItem.style.transform = 'translateY(0)';
+                        legendItem.style.boxShadow = 'none';
+                    }
+                });
+                
+                // Add click handler
+                legendItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🎯 CLICKED on connection type:', connectionType.type);
+                    console.log('Event target:', e.target);
+                    console.log('Legend item:', legendItem);
+                    filterConnectionsByType(connectionType.type);
+                    updateConnectionLegendSelection(connectionType.type);
+                });
+                
+                const lineSample = document.createElement('div');
+                lineSample.style.cssText = `
+                    width: 30px;
+                    height: ${connectionType.width}px;
+                    background: ${connectionType.color};
+                    margin-right: 12px;
+                    border-radius: 2px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                `;
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.style.cssText = `
+                    flex: 1;
+                `;
+                
+                infoDiv.innerHTML = `
+                    <div style="font-weight: bold; color: ${connectionType.color}; font-size: 13px;">${connectionType.name}</div>
+                    <div style="font-size: 11px; color: #666;">${connectionType.description}</div>
+                `;
+                
+                // Add click indicator
+                const clickIndicator = document.createElement('div');
+                clickIndicator.style.cssText = `
+                    font-size: 10px;
+                    color: ${connectionType.color};
+                    margin-left: 8px;
+                    opacity: 0.8;
+                    font-weight: bold;
+                    background: ${connectionType.color}20;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    border: 1px solid ${connectionType.color}40;
+                `;
+                clickIndicator.textContent = '👆 CLICK';
+                
+                legendItem.appendChild(lineSample);
+                legendItem.appendChild(infoDiv);
+                legendItem.appendChild(clickIndicator);
+                connectionLegendContent.appendChild(legendItem);
+                console.log('✅ Added connection legend item:', connectionType.type);
+            });
+            
+            console.log('Connection legend update complete');
+        }
+
+        function filterMarkersByIP(selectedIP) {
+            console.log('Filtering by IP:', selectedIP);
+            if (!map) {
+                console.log('Map not available');
+                return;
+            }
+            
+            console.log('Total markers:', markers.length);
+            console.log('Total connections:', connections.length);
+            
+            // Hide all markers
+            markers.forEach(marker => {
+                marker.getElement().style.display = 'none';
+            });
+            
+            // Hide all connections
+            connections.forEach(connection => {
+                if (map.getLayer(connection.id)) {
+                    map.setLayoutProperty(connection.id, 'visibility', 'none');
+                }
+            });
+            
+            // Show only the selected IP marker
+            const selectedMarker = markers.find(marker => marker.ip === selectedIP);
+            console.log('Selected marker found:', selectedMarker);
+            
+            if (selectedMarker) {
+                selectedMarker.getElement().style.display = 'block';
+                console.log('Showing marker for IP:', selectedIP);
+                
+                // Show connections for this IP
+                let visibleConnections = 0;
+                connections.forEach(connection => {
+                    if (map.getLayer(connection.id)) {
+                        // Check if this connection involves the selected IP
+                        const source = map.getSource(connection.id);
+                        if (source && source._data && source._data.properties) {
+                            const fromIP = getIPFromCoordinates(source._data.properties.from);
+                            const toIP = getIPFromCoordinates(source._data.properties.to);
+                            
+                            if (fromIP === selectedIP || toIP === selectedIP) {
+                                map.setLayoutProperty(connection.id, 'visibility', 'visible');
+                                visibleConnections++;
+                            }
+                        }
+                    }
+                });
+                
+                console.log('Visible connections:', visibleConnections);
+                
+                // Center map on selected marker
+                const lngLat = selectedMarker.getLngLat();
+                map.flyTo({
+                    center: [lngLat.lng, lngLat.lat],
+                    zoom: 8,
+                    duration: 1000
+                });
+            } else {
+                console.log('No marker found for IP:', selectedIP);
+            }
+            
+            // Update status
+            document.getElementById('status').textContent = `Showing only IP: ${selectedIP}`;
+        }
+
+        function getIPFromCoordinates(coords) {
+            // Find marker by coordinates
+            const marker = markers.find(m => {
+                const markerLngLat = m.getLngLat();
+                return Math.abs(markerLngLat.lng - coords[0]) < 0.001 && 
+                       Math.abs(markerLngLat.lat - coords[1]) < 0.001;
+            });
+            return marker ? marker.ip : null;
+        }
+
+        function updateLegendSelection(selectedIP) {
+            console.log('Updating legend selection for IP:', selectedIP);
+            
+            // Remove previous selection
+            const legendItems = document.querySelectorAll('#legendContent > div');
+            console.log('Found legend items:', legendItems.length);
+            
+            legendItems.forEach(item => {
+                item.classList.remove('selected');
+                item.style.background = 'white';
+                item.style.borderColor = '#ddd';
+                item.style.borderWidth = '1px';
+            });
+            
+            // Highlight selected item using data attribute
+            const selectedItem = Array.from(legendItems).find(item => 
+                item.getAttribute('data-ip') === selectedIP
+            );
+            
+            console.log('Selected item found:', selectedItem);
+            
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+                selectedItem.style.background = '#e3f2fd';
+                selectedItem.style.borderColor = '#2196f3';
+                selectedItem.style.borderWidth = '2px';
+                console.log('Legend item highlighted');
+            } else {
+                console.log('No legend item found for IP:', selectedIP);
+            }
+        }
+
+        function filterConnectionsByType(connectionType) {
+            console.log('🔍 Filtering connections by type:', connectionType);
+            if (!map) {
+                console.log('❌ Map not available');
+                return;
+            }
+            
+            console.log('📊 Total connections available:', connections.length);
+            
+            // Show all markers first
+            markers.forEach(marker => {
+                marker.getElement().style.display = 'block';
+            });
+            
+            // Hide all connections first
+            connections.forEach(connection => {
+                if (map.getLayer(connection.id)) {
+                    map.setLayoutProperty(connection.id, 'visibility', 'none');
+                }
+            });
+            
+            // Show only connections of the selected type
+            let visibleConnections = 0;
+            connections.forEach(connection => {
+                console.log('🔍 Checking connection:', connection.id, 'type:', connection.relationshipType, 'matches:', connection.relationshipType === connectionType);
+                if (map.getLayer(connection.id) && connection.relationshipType === connectionType) {
+                    map.setLayoutProperty(connection.id, 'visibility', 'visible');
+                    visibleConnections++;
+                    console.log('✅ Showing connection:', connection.id);
+                }
+            });
+            
+            console.log('📈 Visible connections of type', connectionType + ':', visibleConnections);
+            
+            // Update status
+            document.getElementById('status').textContent = `Showing ${visibleConnections} ${connectionType} connections`;
+            
+            // If no connections found, show a message
+            if (visibleConnections === 0) {
+                console.log('⚠️ No connections found for type:', connectionType);
+                document.getElementById('status').textContent = `No ${connectionType} connections found`;
+            }
+        }
+
+        function updateConnectionLegendSelection(selectedType) {
+            console.log('Updating connection legend selection for type:', selectedType);
+            
+            // Remove previous selection
+            const connectionLegendItems = document.querySelectorAll('#connectionLegendContent > div');
+            console.log('Found connection legend items:', connectionLegendItems.length);
+            
+            connectionLegendItems.forEach(item => {
+                item.classList.remove('selected');
+                item.style.background = 'white';
+                item.style.borderColor = '#ddd';
+                item.style.borderWidth = '1px';
+            });
+            
+            // Highlight selected item
+            const selectedItem = Array.from(connectionLegendItems).find(item => 
+                item.getAttribute('data-connection-type') === selectedType
+            );
+            
+            console.log('Selected connection item found:', selectedItem);
+            
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+                selectedItem.style.background = '#e3f2fd';
+                selectedItem.style.borderColor = '#2196f3';
+                selectedItem.style.borderWidth = '2px';
+                console.log('Connection legend item highlighted');
+            } else {
+                console.log('No connection legend item found for type:', selectedType);
+            }
+        }
+
+        function showAllConnections() {
+            if (!map) return;
+            
+            console.log('Showing all connections');
+            
+            // Show all markers
+            markers.forEach(marker => {
+                marker.getElement().style.display = 'block';
+            });
+            
+            // Show all connections
+            connections.forEach(connection => {
+                if (map.getLayer(connection.id)) {
+                    map.setLayoutProperty(connection.id, 'visibility', 'visible');
+                }
+            });
+            
+            // Ensure connections are visible
+            connectionsVisible = true;
+            
+            // Reset connection legend selection
+            const connectionLegendItems = document.querySelectorAll('#connectionLegendContent > div');
+            connectionLegendItems.forEach(item => {
+                item.classList.remove('selected');
+                item.style.background = 'white';
+                item.style.borderColor = '#ddd';
+                item.style.borderWidth = '1px';
+            });
+            
+            // Update status
+            document.getElementById('status').textContent = `Showing all ${connections.length} connections`;
+        }
+
+        function showAllMarkers() {
+            if (!map) return;
+            
+            // Show all markers
+            markers.forEach(marker => {
+                marker.getElement().style.display = 'block';
+            });
+            
+            // Show all connections
+            connections.forEach(connection => {
+                if (map.getLayer(connection.id)) {
+                    map.setLayoutProperty(connection.id, 'visibility', connectionsVisible ? 'visible' : 'none');
+                }
+            });
+            
+            // Reset IP legend selection
+            const legendItems = document.querySelectorAll('#legendContent > div');
+            legendItems.forEach(item => {
+                item.classList.remove('selected');
+                item.style.background = 'white';
+                item.style.borderColor = '#ddd';
+                item.style.borderWidth = '1px';
+            });
+            
+            // Reset connection legend selection
+            const connectionLegendItems = document.querySelectorAll('#connectionLegendContent > div');
+            connectionLegendItems.forEach(item => {
+                item.classList.remove('selected');
+                item.style.background = 'white';
+                item.style.borderColor = '#ddd';
+                item.style.borderWidth = '1px';
+            });
+            
+            // Update status
+            document.getElementById('status').textContent = `Showing all ${markers.length} markers and ${connections.length} connections`;
+        }
+
+        function testMap() {
+            if (!map) {
+                alert('Map not ready yet');
+                return;
+            }
+            document.getElementById('status').textContent = 'Map is working!';
+            console.log('Map test successful');
+            console.log('Markers count:', markers.length);
+            console.log('Connections count:', connections.length);
+            console.log('IP legend element:', document.getElementById('ipLegend'));
+            console.log('Connection legend element:', document.getElementById('connectionLegend'));
+        }
+
+        function addSampleData() {
+            if (!map) {
+                alert('Map not ready yet');
+                return;
+            }
+
+            // Sample Azure logs data with connections
+            const sampleLogs = [
+                {
+                    "timeGenerated": "2025-01-15T10:00:00Z",
+                    "operationName": "Sign-in activity",
+                    "category": "AuditLogs",
+                    "result": "Failure",
+                    "ipAddress": "1.2.3.4"
+                },
+                {
+                    "timeGenerated": "2025-01-15T10:05:00Z",
+                    "operationName": "Sign-in activity",
+                    "category": "AuditLogs",
+                    "result": "Failure",
+                    "ipAddress": "213.131.254.120"
+                },
+                {
+                    "timeGenerated": "2025-01-15T10:08:00Z",
+                    "category": "AzureFirewallApplicationRule",
+                    "action": "Deny",
+                    "sourceIp": "10.0.0.4"
+                },
+                {
+                    "timeGenerated": "2025-01-15T10:10:00Z",
+                    "operationName": "Admin activity",
+                    "category": "AuditLogs",
+                    "result": "Success",
+                    "ipAddress": "203.0.113.10"
+                },
+                {
+                    "timeGenerated": "2025-01-15T10:12:00Z",
+                    "category": "ThreatIntelligence",
+                    "severity": "High",
+                    "ipAddress": "185.199.108.153"
+                },
+                {
+                    "timeGenerated": "2025-01-15T10:15:00Z",
+                    "category": "ThreatIntelligence",
+                    "severity": "High",
+                    "ipAddress": "140.82.112.4"
+                }
+            ];
+
+            // Filter sample data for security risks only
+            logData = sampleLogs.filter(logEntry => {
+                const riskLevel = window.threatEngine.determineRiskLevel(logEntry);
+                return riskLevel === 'medium' || riskLevel === 'high';
+            });
+            
+            document.getElementById('status').textContent = `Loaded ${logData.length} security risk entries from sample data (filtered from ${sampleLogs.length} total)`;
+            generateMapFromLogs();
+        }
+
+        function clearMarkers() {
+            if (!map) {
+                alert('Map not ready yet');
+                return;
+            }
+
+            markers.forEach(marker => {
+                marker.remove();
+            });
+            markers = [];
+            clearAllConnections();
+            logData = [];
+            
+            // Hide legend when markers are cleared
+            updateIPLegend();
+            
+            document.getElementById('status').textContent = 'Markers and connections cleared';
+            console.log('Markers and connections cleared');
+        }
+
+        async function refreshThreatIntelligence() {
+            if (!map || markers.length === 0) {
+                alert('No markers to refresh threat intelligence for');
+                return;
+            }
+
+            document.getElementById('status').textContent = 'Refreshing threat intelligence data...';
+            
+            // Clear threat intelligence cache
+            threatEngine.threatIntelCache.clear();
+            
+            // Re-process all markers with fresh threat intelligence
+            for (let i = 0; i < markers.length; i++) {
+                const marker = markers[i];
+                const ip = marker.ip;
+                
+                // Get fresh threat intelligence
+                const threatData = await threatEngine.getThreatIntelligence(ip);
+                marker.threatData = threatData;
+                
+                // Update marker color based on new threat data
+                let enhancedRiskLevel = marker.riskLevel;
+                if (threatData.reputation === 'malicious') {
+                    enhancedRiskLevel = 'high';
+                } else if (threatData.reputation === 'suspicious' && marker.riskLevel !== 'high') {
+                    enhancedRiskLevel = 'medium';
+                }
+                
+                // Update marker appearance
+                const colors = {
+                    high: '#dc3545',
+                    medium: '#fd7e14',
+                    low: '#28a745',
+                    info: '#17a2b8',
+                    none: '#6c757d'
+                };
+                
+                const element = marker.getElement();
+                element.style.backgroundColor = colors[enhancedRiskLevel];
+                element.style.background = colors[enhancedRiskLevel];
+                
+                // Update popup content
+                const threatInfo = threatData.reputation !== 'clean' ? `
+                    <div style="margin-top: 10px; padding: 8px; background: ${threatData.reputation === 'malicious' ? '#f8d7da' : '#fff3cd'}; border-radius: 4px; border: 1px solid ${threatData.reputation === 'malicious' ? '#f5c6cb' : '#ffeaa7'};">
+                        <strong>🛡️ Threat Intelligence:</strong><br>
+                        <span style="color: ${threatData.reputation === 'malicious' ? '#721c24' : '#856404'};">
+                            Reputation: ${threatData.reputation.toUpperCase()}<br>
+                            Threat Score: ${threatData.threatScore}%<br>
+                            Sources: ${threatData.sources.join(', ')}<br>
+                            ${threatData.malwareFamilies.length > 0 ? `Malware: ${threatData.malwareFamilies.join(', ')}<br>` : ''}
+                            ${threatData.abuseReports > 0 ? `Abuse Reports: ${threatData.abuseReports}<br>` : ''}
+                        </span>
+                    </div>
+                ` : '';
+
+                const popupContent = `
+                    <div style="font-family: Arial, sans-serif; max-width: 300px;">
+                        <h4 style="margin: 0 0 10px 0; color: ${colors[enhancedRiskLevel]};">${enhancedRiskLevel.toUpperCase()} RISK</h4>
+                        <p><strong>IP:</strong> ${ip}</p>
+                        <p><strong>Location:</strong> ${marker.location.city}, ${marker.location.country}</p>
+                        <p><strong>Event:</strong> ${marker.logEntry.operationName || marker.logEntry.category || 'Security Event'}</p>
+                        <p><strong>Result:</strong> ${marker.logEntry.result || marker.logEntry.action || 'Unknown'}</p>
+                        <p><strong>User:</strong> ${marker.logEntry.userPrincipalName || marker.logEntry.caller || 'Unknown'}</p>
+                        ${threatInfo}
+                    </div>
+                `;
+                
+                marker.setPopup(new maplibregl.Popup().setHTML(popupContent));
+                marker.riskLevel = enhancedRiskLevel;
+                
+                // Update status periodically
+                if ((i + 1) % 5 === 0) {
+                    document.getElementById('status').textContent = `Refreshing threat intelligence: ${i + 1}/${markers.length} markers...`;
+                }
+            }
+            
+            // Update threat intelligence dashboard
+            threatEngine.updateThreatIntelligenceStats();
+            
+            document.getElementById('status').textContent = `Threat intelligence refreshed for ${markers.length} markers`;
+        }
+
+        // Auto-open resume when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded - calling autoOpenResume');
+            autoOpenResume();
+        });
+    </script>
+</body>
+</html>
