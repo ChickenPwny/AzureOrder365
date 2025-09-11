@@ -3,7 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimal Azure Logs Map</title>
+    
+    <!-- SEO Meta Tags -->
+    <title>Azure Security Logs Visualization Tool - Interactive Threat Intelligence Map</title>
+    <meta name="description" content="Visualize Azure security logs on an interactive map with real-time threat intelligence. Analyze IP addresses, connections, and security events with automated risk assessment and threat scoring.">
+    <meta name="keywords" content="Azure security, threat intelligence, security logs, IP analysis, cybersecurity, threat mapping, security visualization, Azure monitoring, network security">
+    <meta name="author" content="Azure Security Tools">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph Meta Tags for Social Media -->
+    <meta property="og:title" content="Azure Security Logs Visualization Tool">
+    <meta property="og:description" content="Interactive threat intelligence mapping for Azure security logs with real-time risk assessment and connection analysis.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://chickenpwny.github.io/AzureOrder365/">
+    <meta property="og:image" content="https://chickenpwny.github.io/AzureOrder365/azure-security-map-preview.png">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Azure Security Logs Visualization Tool">
+    <meta name="twitter:description" content="Interactive threat intelligence mapping for Azure security logs with real-time risk assessment.">
+    <meta name="twitter:image" content="https://chickenpwny.github.io/AzureOrder365/azure-security-map-preview.png">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://chickenpwny.github.io/AzureOrder365/">
     
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" crossorigin="anonymous" />
     
@@ -187,25 +209,191 @@
             z-index: 2;
         }
         
-        /* Simple marker styling like test-minimal.html */
+        /* Beautiful Animated Threat Intelligence Markers */
         .maplibregl-marker {
-            z-index: 1000;
+            z-index: 1000 !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
         
         .maplibregl-marker div {
-            z-index: 1001;
+            z-index: 1001 !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
         
-        /* Force connection lines to be on top */
-        .maplibregl-canvas-container canvas[style*="z-index"] {
-            z-index: 999 !important;
+        /* Simple Threat Level Styling - Chrome Compatible */
+        .threat-marker {
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
         }
         
-        /* Ensure all map layers are below markers and connections */
+        .threat-marker:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        
+        /* High Risk - Red */
+        .threat-high {
+            background: #dc3545;
+        }
+        
+        /* Medium Risk - Orange */
+        .threat-medium {
+            background: #fd7e14;
+        }
+        
+        /* Low Risk - Green */
+        .threat-low {
+            background: #28a745;
+        }
+        
+        /* Info Risk - Blue */
+        .threat-info {
+            background: #17a2b8;
+        }
+        
+        /* Threat Level Badge */
+        .threat-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            font-size: 8px;
+            font-weight: bold;
+            padding: 2px 4px;
+            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Threat Ring Animation */
+        .threat-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            opacity: 0.6;
+            animation: threatRing 2s ease-out infinite;
+        }
+        
+        /* Ensure map elements are below markers */
         .maplibregl-canvas-container {
             z-index: 1 !important;
         }
+        
+        /* Simple Chrome-Compatible Animations */
+        @keyframes threatPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes threatGlow {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+        
+        @keyframes threatFloat {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-2px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        @keyframes threatRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes threatRing {
+            0% { 
+                transform: scale(1);
+                opacity: 0.6;
+            }
+            100% { 
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+        
+        /* Pulse animation for refresh effect */
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Glow effect for updated markers */
+        @keyframes glow {
+            0% { box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+            50% { box-shadow: 0 4px 20px rgba(255,193,7,0.6); }
+            100% { box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        }
+        
+        /* Threat Intelligence Elements - Higher Z-Index */
+        #threatIntelPanel {
+            z-index: 10000 !important;
+            position: relative !important;
+        }
+        
+        /* Threat Intelligence Dashboard Cards */
+        #maliciousIPs, #suspiciousIPs, #cleanIPs, #threatScore {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+        
+        /* Threat Intelligence Status Indicators */
+        #ipApiStatus, #abuseIpdbStatus, #virustotalStatus {
+            z-index: 10002 !important;
+            position: relative !important;
+        }
+        
+        /* MapLibre Popups - Ensure they're above everything */
+        .maplibregl-popup {
+            z-index: 50000 !important;
+        }
+        
+        .maplibregl-popup-content {
+            z-index: 50001 !important;
+        }
+        
+        /* Connection Controls Panel */
+        .connection-controls {
+            z-index: 10003 !important;
+            position: relative !important;
+        }
     </style>
+    
+    <!-- Structured Data for Search Engines -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Azure Security Logs Visualization Tool",
+        "description": "Interactive threat intelligence mapping tool for Azure security logs with real-time risk assessment and connection analysis",
+        "url": "https://chickenpwny.github.io/AzureOrder365/",
+        "applicationCategory": "SecurityApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "creator": {
+            "@type": "Organization",
+            "name": "Azure Security Tools"
+        },
+        "featureList": [
+            "Interactive threat intelligence mapping",
+            "Real-time IP address analysis",
+            "Azure security log visualization",
+            "Automated risk assessment",
+            "Connection analysis and mapping",
+            "Threat scoring and classification"
+        ]
+    }
+    </script>
 </head>
 <body>
     <!-- Resume Popup -->
@@ -220,14 +408,18 @@
     <!-- Resume Trigger Button -->
     <button class="resume-trigger-btn" onclick="openResumePopup()">📄 View Resume</button>
     
-    <h1>Minimal Azure Logs Map</h1>
-    
-    <div class="file-upload" id="fileDropZone">
-        <h3>Upload Azure Security Logs</h3>
-        <input type="file" id="logFile" accept=".json,.csv" />
-        <p>Drag and drop your JSON or CSV file here</p>
-        <p><small>Supports JSON and CSV formats</small></p>
-    </div>
+    <main>
+        <header>
+            <h1>Azure Security Logs Visualization Tool</h1>
+            <p>Interactive threat intelligence mapping for Azure security logs with real-time risk assessment and connection analysis</p>
+        </header>
+        
+        <section class="file-upload" id="fileDropZone">
+            <h2>Upload Azure Security Logs</h2>
+            <input type="file" id="logFile" accept=".json,.csv" />
+            <p>Drag and drop your JSON or CSV file here</p>
+            <p><small>Supports JSON and CSV formats</small></p>
+        </section>
     
     <button onclick="testMap()">Test Map</button>
     <button onclick="addSampleData()">Add Sample Data</button>
@@ -569,8 +761,8 @@
                 
                 if (riskScore >= 60) return 'high';
                 if (riskScore >= 30) return 'medium';
-                if (riskScore >= 10) return 'low';
-                return 'none';
+                if (riskScore >= 5) return 'low';
+                return 'info';
             }
 
             parseCSV(content) {
@@ -1183,22 +1375,26 @@
             console.log(`Creating marker for IP ${ip} with risk level: ${enhancedRiskLevel}, color: ${colors[enhancedRiskLevel]}, threat score: ${threatData.threatScore}`);
 
             const markerElement = document.createElement('div');
-            
-            // Use the same CSS approach as test-minimal.html
+
+            // Simple, Chrome-compatible marker design
+            markerElement.className = `threat-marker threat-${enhancedRiskLevel}`;
             markerElement.style.cssText = `
-                background: ${colors[enhancedRiskLevel]};
                 width: 30px;
                 height: 30px;
                 border-radius: 50%;
-                border: 3px solid white;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 color: white;
-                font-size: 14px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                font-size: 12px;
+                font-weight: bold;
                 cursor: pointer;
+                position: relative;
+                z-index: 1000;
             `;
+            
+            // Add threat level text inside the marker
+            markerElement.textContent = enhancedRiskLevel.charAt(0).toUpperCase();
 
             // Enhanced popup content with threat intelligence
             const threatInfo = threatData.reputation !== 'clean' ? `
@@ -1250,14 +1446,14 @@
             markerElement.style.visibility = 'visible';
             markerElement.style.opacity = '1';
             markerElement.style.zIndex = '1000';
-
+            
             // Store additional data for connections
             marker.ip = ip;
             marker.riskLevel = enhancedRiskLevel;
             marker.location = location;
             marker.logEntry = logEntry;
             marker.threatData = threatData;
-
+            
             markers.push(marker);
             
             // Update threat intelligence dashboard
@@ -2175,15 +2371,31 @@
                 return;
             }
 
-            document.getElementById('status').textContent = 'Refreshing threat intelligence data...';
+            // Enhanced visual feedback
+            const refreshButton = document.querySelector('button[onclick="refreshThreatIntelligence()"]');
+            if (refreshButton) {
+                refreshButton.style.background = '#ffc107';
+                refreshButton.textContent = '🔄 Refreshing...';
+                refreshButton.disabled = true;
+            }
+
+            document.getElementById('status').textContent = '🔄 Refreshing threat intelligence data...';
             
             // Clear threat intelligence cache
             threatEngine.threatIntelCache.clear();
+            
+            let changedCount = 0;
+            let riskLevelChanges = { high: 0, medium: 0, low: 0, info: 0, none: 0 };
             
             // Re-process all markers with fresh threat intelligence
             for (let i = 0; i < markers.length; i++) {
                 const marker = markers[i];
                 const ip = marker.ip;
+                const originalRiskLevel = marker.riskLevel;
+                
+                // Add pulsing effect to marker being processed
+                const element = marker.getElement();
+                element.style.animation = 'pulse 0.5s ease-in-out';
                 
                 // Get fresh threat intelligence
                 const threatData = await threatEngine.getThreatIntelligence(ip);
@@ -2197,7 +2409,13 @@
                     enhancedRiskLevel = 'medium';
                 }
                 
-                // Update marker appearance
+                // Track changes
+                if (originalRiskLevel !== enhancedRiskLevel) {
+                    changedCount++;
+                    riskLevelChanges[enhancedRiskLevel]++;
+                }
+                
+                // Update marker appearance with smooth transition
                 const colors = {
                     high: '#dc3545',
                     medium: '#fd7e14',
@@ -2206,9 +2424,20 @@
                     none: '#6c757d'
                 };
                 
-                const element = marker.getElement();
+                // Smooth color transition effect
+                element.style.transition = 'all 0.3s ease-in-out';
                 element.style.backgroundColor = colors[enhancedRiskLevel];
                 element.style.background = colors[enhancedRiskLevel];
+                element.style.transform = 'scale(1.2)';
+                
+                // Reset transform after animation
+                setTimeout(() => {
+                    element.style.transform = 'scale(1)';
+                    element.style.animation = '';
+                }, 300);
+
+                // Update the marker's risk level
+                marker.riskLevel = enhancedRiskLevel;
                 
                 // Update popup content
                 const threatInfo = threatData.reputation !== 'clean' ? `
@@ -2237,18 +2466,46 @@
                 `;
                 
                 marker.setPopup(new maplibregl.Popup().setHTML(popupContent));
-                marker.riskLevel = enhancedRiskLevel;
                 
-                // Update status periodically
+                // Update status periodically with progress
                 if ((i + 1) % 5 === 0) {
-                    document.getElementById('status').textContent = `Refreshing threat intelligence: ${i + 1}/${markers.length} markers...`;
+                    const progress = Math.round(((i + 1) / markers.length) * 100);
+                    document.getElementById('status').textContent = `🔄 Refreshing threat intelligence: ${i + 1}/${markers.length} markers (${progress}%)...`;
                 }
             }
             
             // Update threat intelligence dashboard
             threatEngine.updateThreatIntelligenceStats();
             
-            document.getElementById('status').textContent = `Threat intelligence refreshed for ${markers.length} markers`;
+            // Enhanced completion feedback
+            if (refreshButton) {
+                refreshButton.style.background = '#28a745';
+                refreshButton.textContent = '✅ Refresh Complete';
+                setTimeout(() => {
+                    refreshButton.style.background = '#6f42c1';
+                    refreshButton.textContent = '🔄 Refresh Threat Intel';
+                    refreshButton.disabled = false;
+                }, 2000);
+            }
+            
+            // Detailed completion message
+            let completionMessage = `✅ Threat intelligence refreshed for ${markers.length} markers`;
+            if (changedCount > 0) {
+                completionMessage += `\n📊 ${changedCount} markers changed risk levels:`;
+                if (riskLevelChanges.high > 0) completionMessage += ` ${riskLevelChanges.high}→HIGH`;
+                if (riskLevelChanges.medium > 0) completionMessage += ` ${riskLevelChanges.medium}→MEDIUM`;
+                if (riskLevelChanges.low > 0) completionMessage += ` ${riskLevelChanges.low}→LOW`;
+                if (riskLevelChanges.info > 0) completionMessage += ` ${riskLevelChanges.info}→INFO`;
+            } else {
+                completionMessage += `\n📊 No risk level changes detected`;
+            }
+            
+            document.getElementById('status').textContent = completionMessage;
+            
+            // Show success notification
+            if (changedCount > 0) {
+                console.log(`🎯 Threat intelligence refresh complete: ${changedCount} markers updated`);
+            }
         }
 
         // Auto-open resume when DOM is ready
@@ -2257,5 +2514,6 @@
             autoOpenResume();
         });
     </script>
+    </main>
 </body>
 </html>
