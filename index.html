@@ -29,99 +29,8 @@
     
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" crossorigin="anonymous" />
     
-    <!-- Resume Popup Styles -->
+    <!-- Resume Button Styles -->
     <style>
-        .resume-popup {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            z-index: 10000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-        
-        .resume-popup.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .resume-popup-content {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            width: 80vw;
-            max-width: 80vw;
-            max-height: 90vh;
-            overflow-y: auto;
-            position: relative;
-            transform: scale(0.8);
-            transition: all 0.3s ease;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-        
-        .resume-popup-content.shrunk {
-            transform: scale(1);
-            width: 400px !important;
-            height: 300px !important;
-            max-width: 400px;
-            max-height: 300px;
-        }
-        
-        .resume-popup.show .resume-popup-content {
-            transform: scale(1);
-        }
-        
-        .resume-close-btn {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10001;
-        }
-        
-        .resume-close-btn:hover {
-            background: #c82333;
-        }
-        
-        .resume-shrink-btn {
-            position: absolute;
-            top: 15px;
-            right: 60px;
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10001;
-        }
-        
-        .resume-shrink-btn:hover {
-            background: #5a6268;
-        }
-        
         .resume-trigger-btn {
             position: fixed;
             top: 20px;
@@ -131,6 +40,7 @@
             border: none;
             padding: 12px 20px;
             border-radius: 25px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
             z-index: 1000;
@@ -363,6 +273,72 @@
             z-index: 10003 !important;
             position: relative !important;
         }
+        
+        /* Mission Control Slider Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-webkit-slider-track {
+            background: #ddd;
+            height: 6px;
+            border-radius: 3px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #4CAF50;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        
+        input[type="range"]::-moz-range-track {
+            background: #ddd;
+            height: 6px;
+            border-radius: 3px;
+            border: none;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            background: #4CAF50;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        
+        .control-group:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .mission-controls button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        
+        /* Notification Animation */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
     
     <!-- Structured Data for Search Engines -->
@@ -396,17 +372,8 @@
     </script>
 </head>
 <body>
-    <!-- Resume Popup -->
-    <div id="resumePopup" class="resume-popup">
-        <div class="resume-popup-content">
-            <button class="resume-close-btn" onclick="closeResumePopup()">&times;</button>
-            <button class="resume-shrink-btn" onclick="shrinkResumePopup()">−</button>
-            <iframe id="resumeFrame" src="resume.html" width="100%" height="100%" frameborder="0" style="min-height: 85vh; border-radius: 15px; border: none;"></iframe>
-        </div>
-    </div>
-    
     <!-- Resume Trigger Button -->
-    <button class="resume-trigger-btn" onclick="openResumePopup()">📄 View Resume</button>
+    <button class="resume-trigger-btn" onclick="openResume()">📄 View Resume</button>
     
     <main>
         <header>
@@ -419,6 +386,126 @@
             <input type="file" id="logFile" accept=".json,.csv" />
             <p>Drag and drop your JSON or CSV file here</p>
             <p><small>Supports JSON and CSV formats</small></p>
+        </section>
+        
+        <!-- Mission Control Panel -->
+        <section class="mission-controls" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 25px; margin: 20px 0; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <h2 style="margin: 0 0 20px 0; text-align: center; font-size: 24px;">🎛️ Mission Control Panel</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px;">
+                
+                <!-- Risk Filtering Controls -->
+                <div class="control-group" style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; backdrop-filter: blur(10px);">
+                    <h3 style="margin: 0 0 15px 0; color: #fff; font-size: 18px;">🛡️ Risk Filtering</h3>
+                    
+                    <div class="slider-control" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500;">Minimum Risk Score</label>
+                        <input type="range" id="minRiskScore" min="0" max="100" value="5" style="width: 100%; height: 6px; border-radius: 3px; background: #ddd; outline: none;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
+                            <span>0 (All)</span>
+                            <span id="minRiskValue">5</span>
+                            <span>100 (Critical)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="slider-control" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500;">Maximum Connections</label>
+                        <input type="range" id="maxConnections" min="10" max="50000" value="10000" step="100" style="width: 100%; height: 6px; border-radius: 3px; background: #ddd; outline: none;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
+                            <span>10</span>
+                            <span id="maxConnValue">10,000</span>
+                            <span>50,000</span>
+                        </div>
+                    </div>
+                    
+                    <div class="checkbox-control" style="margin-top: 15px;">
+                        <label style="display: flex; align-items: center; font-size: 14px;">
+                            <input type="checkbox" id="includeLowRisk" checked style="margin-right: 8px;">
+                            Include Low Risk Events
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Display Controls -->
+                <div class="control-group" style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; backdrop-filter: blur(10px);">
+                    <h3 style="margin: 0 0 15px 0; color: #fff; font-size: 18px;">🎨 Display Settings</h3>
+                    
+                    <div class="slider-control" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500;">Marker Size</label>
+                        <input type="range" id="markerSize" min="10" max="50" value="30" style="width: 100%; height: 6px; border-radius: 3px; background: #ddd; outline: none;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
+                            <span>Small (10px)</span>
+                            <span id="markerSizeValue">30px</span>
+                            <span>Large (50px)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="slider-control" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500;">Connection Line Width</label>
+                        <input type="range" id="lineWidth" min="1" max="10" value="3" style="width: 100%; height: 6px; border-radius: 3px; background: #ddd; outline: none;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
+                            <span>Thin (1px)</span>
+                            <span id="lineWidthValue">3px</span>
+                            <span>Thick (10px)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="slider-control" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500;">Connection Opacity</label>
+                        <input type="range" id="lineOpacity" min="0.1" max="1" step="0.1" value="0.7" style="width: 100%; height: 6px; border-radius: 3px; background: #ddd; outline: none;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
+                            <span>Faint (0.1)</span>
+                            <span id="lineOpacityValue">0.7</span>
+                            <span>Solid (1.0)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Performance Controls -->
+                <div class="control-group" style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; backdrop-filter: blur(10px);">
+                    <h3 style="margin: 0 0 15px 0; color: #fff; font-size: 18px;">⚡ Performance</h3>
+                    
+                    <div class="slider-control" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500;">Animation Speed</label>
+                        <input type="range" id="animationSpeed" min="0.5" max="3" step="0.1" value="1" style="width: 100%; height: 6px; border-radius: 3px; background: #ddd; outline: none;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
+                            <span>Slow (0.5x)</span>
+                            <span id="animSpeedValue">1.0x</span>
+                            <span>Fast (3.0x)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="slider-control" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500;">Update Frequency (ms)</label>
+                        <input type="range" id="updateFreq" min="100" max="2000" step="100" value="500" style="width: 100%; height: 6px; border-radius: 3px; background: #ddd; outline: none;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
+                            <span>Fast (100ms)</span>
+                            <span id="updateFreqValue">500ms</span>
+                            <span>Slow (2000ms)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="checkbox-control" style="margin-top: 15px;">
+                        <label style="display: flex; align-items: center; font-size: 14px;">
+                            <input type="checkbox" id="enableAnimations" checked style="margin-right: 8px;">
+                            Enable Animations
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Control Buttons -->
+            <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
+                <button onclick="applySettings()" style="background: #4CAF50; color: white; border: none; padding: 12px 25px; border-radius: 6px; font-size: 16px; font-weight: bold; margin: 0 10px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                    🚀 Apply Settings
+                </button>
+                <button onclick="resetSettings()" style="background: #ff9800; color: white; border: none; padding: 12px 25px; border-radius: 6px; font-size: 16px; font-weight: bold; margin: 0 10px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                    🔄 Reset to Defaults
+                </button>
+                <button onclick="exportSettings()" style="background: #2196F3; color: white; border: none; padding: 12px 25px; border-radius: 6px; font-size: 16px; font-weight: bold; margin: 0 10px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                    💾 Export Settings
+                </button>
+            </div>
         </section>
     
     <button onclick="testMap()">Test Map</button>
@@ -505,74 +592,9 @@
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js" crossorigin="anonymous"></script>
     
     <script>
-        // Resume Popup Functions
-        function openResumePopup() {
-            console.log('openResumePopup called');
-            const popup = document.getElementById('resumePopup');
-            console.log('Popup element:', popup);
-            if (popup) {
-                popup.classList.add('show');
-                console.log('Added show class to popup');
-                document.body.style.overflow = 'hidden'; // Prevent background scrolling
-            } else {
-                console.error('Resume popup element not found!');
-            }
-        }
-        
-        function closeResumePopup() {
-            const popup = document.getElementById('resumePopup');
-            popup.classList.remove('show');
-            document.body.style.overflow = 'auto'; // Restore scrolling
-        }
-        
-        function shrinkResumePopup() {
-            const popup = document.getElementById('resumePopup');
-            const content = document.querySelector('.resume-popup-content');
-            const iframe = document.getElementById('resumeFrame');
-            
-            // Toggle between full and shrunk states
-            if (content.classList.contains('shrunk')) {
-                // Expand back to full size
-                content.classList.remove('shrunk');
-                content.style.width = '80vw';
-                content.style.height = '90vh';
-                iframe.style.minHeight = '85vh';
-                iframe.style.height = '100%';
-            } else {
-                // Shrink to smaller size
-                content.classList.add('shrunk');
-                content.style.width = '400px';
-                content.style.height = '300px';
-                iframe.style.minHeight = '250px';
-                iframe.style.height = '100%';
-            }
-        }
-        
-        // Close popup when clicking outside the content
-        document.addEventListener('click', function(event) {
-            const popup = document.getElementById('resumePopup');
-            const content = document.querySelector('.resume-popup-content');
-            
-            if (event.target === popup && !content.contains(event.target)) {
-                closeResumePopup();
-            }
-        });
-        
-        // Close popup with Escape key
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeResumePopup();
-            }
-        });
-        
-        // Auto-open popup function
-        function autoOpenResume() {
-            console.log('autoOpenResume called');
-            // Auto-open the resume popup after a short delay
-            setTimeout(() => {
-                console.log('Opening resume popup...');
-                openResumePopup();
-            }, 1500);
+        // Resume Button Function
+        function openResume() {
+            window.open('resume.html', '_blank');
         }
 
         // Embedded Threat Analysis Engine
@@ -759,10 +781,14 @@
                     riskScore += 25;
                 }
                 
+                // Use mission control settings for risk thresholds
+                const minRiskScore = window.missionSettings ? window.missionSettings.minRiskScore : 5;
+                const includeLowRisk = window.missionSettings ? window.missionSettings.includeLowRisk : true;
+                
                 if (riskScore >= 60) return 'high';
                 if (riskScore >= 30) return 'medium';
-                if (riskScore >= 5) return 'low';
-                return 'info';
+                if (riskScore >= minRiskScore) return 'low';
+                return includeLowRisk ? 'info' : 'none';
             }
 
             parseCSV(content) {
@@ -1378,9 +1404,12 @@
 
             // Simple, Chrome-compatible marker design
             markerElement.className = `threat-marker threat-${enhancedRiskLevel}`;
+            // Use mission control settings for marker size
+            const markerSize = window.missionSettings ? window.missionSettings.markerSize : 30;
+            
             markerElement.style.cssText = `
-                width: 30px;
-                height: 30px;
+                width: ${markerSize}px;
+                height: ${markerSize}px;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
@@ -1590,8 +1619,8 @@
                 },
                 paint: {
                     'line-color': getConnectionColor(relationshipType),
-                    'line-width': Math.max(getConnectionWidth(relationshipType), 4), // Make lines even thicker
-                    'line-opacity': Math.max(getConnectionOpacity(relationshipType), 0.9) // Make lines more opaque
+                    'line-width': window.missionSettings ? window.missionSettings.lineWidth : Math.max(getConnectionWidth(relationshipType), 4),
+                    'line-opacity': window.missionSettings ? window.missionSettings.lineOpacity : Math.max(getConnectionOpacity(relationshipType), 0.9)
                 }
             }); // No layer insertion - appears on top
 
@@ -2508,10 +2537,251 @@
             }
         }
 
-        // Auto-open resume when DOM is ready
+        // DOM Content Loaded - no auto-open needed
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM Content Loaded - calling autoOpenResume');
-            autoOpenResume();
+            console.log('DOM Content Loaded - resume button ready');
+        });
+        
+        // Mission Control Variables
+        let missionSettings = {
+            minRiskScore: 5,
+            maxConnections: 10000,
+            includeLowRisk: true,
+            markerSize: 30,
+            lineWidth: 3,
+            lineOpacity: 0.7,
+            animationSpeed: 1.0,
+            updateFreq: 500,
+            enableAnimations: true
+        };
+        
+        // Make missionSettings globally available
+        window.missionSettings = missionSettings;
+        
+        // Initialize slider event listeners
+        function initializeMissionControls() {
+            // Risk Score Slider
+            const minRiskSlider = document.getElementById('minRiskScore');
+            const minRiskValue = document.getElementById('minRiskValue');
+            if (minRiskSlider && minRiskValue) {
+                minRiskSlider.addEventListener('input', function() {
+                    minRiskValue.textContent = this.value;
+                    missionSettings.minRiskScore = parseInt(this.value);
+                });
+            }
+            
+            // Max Connections Slider
+            const maxConnSlider = document.getElementById('maxConnections');
+            const maxConnValue = document.getElementById('maxConnValue');
+            if (maxConnSlider && maxConnValue) {
+                maxConnSlider.addEventListener('input', function() {
+                    maxConnValue.textContent = this.value.toLocaleString();
+                    missionSettings.maxConnections = parseInt(this.value);
+                });
+            }
+            
+            // Marker Size Slider
+            const markerSizeSlider = document.getElementById('markerSize');
+            const markerSizeValue = document.getElementById('markerSizeValue');
+            if (markerSizeSlider && markerSizeValue) {
+                markerSizeSlider.addEventListener('input', function() {
+                    markerSizeValue.textContent = this.value + 'px';
+                    missionSettings.markerSize = parseInt(this.value);
+                });
+            }
+            
+            // Line Width Slider
+            const lineWidthSlider = document.getElementById('lineWidth');
+            const lineWidthValue = document.getElementById('lineWidthValue');
+            if (lineWidthSlider && lineWidthValue) {
+                lineWidthSlider.addEventListener('input', function() {
+                    lineWidthValue.textContent = this.value + 'px';
+                    missionSettings.lineWidth = parseInt(this.value);
+                });
+            }
+            
+            // Line Opacity Slider
+            const lineOpacitySlider = document.getElementById('lineOpacity');
+            const lineOpacityValue = document.getElementById('lineOpacityValue');
+            if (lineOpacitySlider && lineOpacityValue) {
+                lineOpacitySlider.addEventListener('input', function() {
+                    lineOpacityValue.textContent = this.value;
+                    missionSettings.lineOpacity = parseFloat(this.value);
+                });
+            }
+            
+            // Animation Speed Slider
+            const animSpeedSlider = document.getElementById('animationSpeed');
+            const animSpeedValue = document.getElementById('animSpeedValue');
+            if (animSpeedSlider && animSpeedValue) {
+                animSpeedSlider.addEventListener('input', function() {
+                    animSpeedValue.textContent = this.value + 'x';
+                    missionSettings.animationSpeed = parseFloat(this.value);
+                });
+            }
+            
+            // Update Frequency Slider
+            const updateFreqSlider = document.getElementById('updateFreq');
+            const updateFreqValue = document.getElementById('updateFreqValue');
+            if (updateFreqSlider && updateFreqValue) {
+                updateFreqSlider.addEventListener('input', function() {
+                    updateFreqValue.textContent = this.value + 'ms';
+                    missionSettings.updateFreq = parseInt(this.value);
+                });
+            }
+            
+            // Checkboxes
+            const includeLowRiskCheckbox = document.getElementById('includeLowRisk');
+            if (includeLowRiskCheckbox) {
+                includeLowRiskCheckbox.addEventListener('change', function() {
+                    missionSettings.includeLowRisk = this.checked;
+                });
+            }
+            
+            const enableAnimationsCheckbox = document.getElementById('enableAnimations');
+            if (enableAnimationsCheckbox) {
+                enableAnimationsCheckbox.addEventListener('change', function() {
+                    missionSettings.enableAnimations = this.checked;
+                });
+            }
+        }
+        
+        // Apply settings to the map
+        function applySettings() {
+            console.log('🚀 Applying mission control settings:', missionSettings);
+            
+            // Update global variables
+            MAX_TOTAL_CONNECTIONS = missionSettings.maxConnections;
+            window.missionSettings = missionSettings;
+            
+            // Update marker styles
+            const markers = document.querySelectorAll('.maplibregl-marker');
+            markers.forEach(marker => {
+                marker.style.width = missionSettings.markerSize + 'px';
+                marker.style.height = missionSettings.markerSize + 'px';
+            });
+            
+            // Update connection styles
+            if (map && map.getStyle && map.getStyle().layers) {
+                const connectionLayers = map.getStyle().layers.filter(layer => layer.id.includes('connection'));
+                connectionLayers.forEach(layer => {
+                    map.setPaintProperty(layer.id, 'line-width', missionSettings.lineWidth);
+                    map.setPaintProperty(layer.id, 'line-opacity', missionSettings.lineOpacity);
+                });
+            }
+            
+            // Update animations
+            const style = document.documentElement.style;
+            style.setProperty('--animation-speed', missionSettings.animationSpeed + 's');
+            
+            // Show success message
+            showNotification('✅ Settings applied successfully!', 'success');
+        }
+        
+        // Reset to default settings
+        function resetSettings() {
+            console.log('🔄 Resetting to default settings');
+            
+            // Reset mission settings
+            missionSettings = {
+                minRiskScore: 5,
+                maxConnections: 10000,
+                includeLowRisk: true,
+                markerSize: 30,
+                lineWidth: 3,
+                lineOpacity: 0.7,
+                animationSpeed: 1.0,
+                updateFreq: 500,
+                enableAnimations: true
+            };
+            
+            // Reset sliders
+            const minRiskSlider = document.getElementById('minRiskScore');
+            const maxConnSlider = document.getElementById('maxConnections');
+            const markerSizeSlider = document.getElementById('markerSize');
+            const lineWidthSlider = document.getElementById('lineWidth');
+            const lineOpacitySlider = document.getElementById('lineOpacity');
+            const animSpeedSlider = document.getElementById('animationSpeed');
+            const updateFreqSlider = document.getElementById('updateFreq');
+            
+            if (minRiskSlider) minRiskSlider.value = 5;
+            if (maxConnSlider) maxConnSlider.value = 10000;
+            if (markerSizeSlider) markerSizeSlider.value = 30;
+            if (lineWidthSlider) lineWidthSlider.value = 3;
+            if (lineOpacitySlider) lineOpacitySlider.value = 0.7;
+            if (animSpeedSlider) animSpeedSlider.value = 1.0;
+            if (updateFreqSlider) updateFreqSlider.value = 500;
+            
+            // Reset checkboxes
+            const includeLowRiskCheckbox = document.getElementById('includeLowRisk');
+            const enableAnimationsCheckbox = document.getElementById('enableAnimations');
+            if (includeLowRiskCheckbox) includeLowRiskCheckbox.checked = true;
+            if (enableAnimationsCheckbox) enableAnimationsCheckbox.checked = true;
+            
+            // Update display values
+            const minRiskValue = document.getElementById('minRiskValue');
+            const maxConnValue = document.getElementById('maxConnValue');
+            const markerSizeValue = document.getElementById('markerSizeValue');
+            const lineWidthValue = document.getElementById('lineWidthValue');
+            const lineOpacityValue = document.getElementById('lineOpacityValue');
+            const animSpeedValue = document.getElementById('animSpeedValue');
+            const updateFreqValue = document.getElementById('updateFreqValue');
+            
+            if (minRiskValue) minRiskValue.textContent = '5';
+            if (maxConnValue) maxConnValue.textContent = '10,000';
+            if (markerSizeValue) markerSizeValue.textContent = '30px';
+            if (lineWidthValue) lineWidthValue.textContent = '3px';
+            if (lineOpacityValue) lineOpacityValue.textContent = '0.7';
+            if (animSpeedValue) animSpeedValue.textContent = '1.0x';
+            if (updateFreqValue) updateFreqValue.textContent = '500ms';
+            
+            showNotification('🔄 Settings reset to defaults!', 'info');
+        }
+        
+        // Export settings
+        function exportSettings() {
+            const settingsJson = JSON.stringify(missionSettings, null, 2);
+            const blob = new Blob([settingsJson], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'azure-security-map-settings.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showNotification('💾 Settings exported successfully!', 'success');
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 6px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 10000;
+                font-weight: bold;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // Initialize controls when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add a small delay to ensure all elements are loaded
+            setTimeout(() => {
+                initializeMissionControls();
+            }, 100);
         });
     </script>
     </main>
