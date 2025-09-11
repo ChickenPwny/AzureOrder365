@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://chickenpwny.github.io/AzureOrder365/sitemap.xml
