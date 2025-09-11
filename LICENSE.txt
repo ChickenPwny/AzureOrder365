@@ -1,0 +1,44 @@
+SOFTWARE LICENSE AGREEMENT
+THREAT INTELLIGENCE VISUALIZATION SYSTEM
+IMPORTANT: READ CAREFULLY BEFORE USING THIS SOFTWARE
+1. GRANT OF LICENSE
+This Software License Agreement ("Agreement") is a legal agreement between you ("Licensee") and the copyright holder ("Licensor") for the Threat Intelligence Visualization System software ("Software").
+Subject to the terms and conditions of this Agreement, Licensor hereby grants to Licensee a limited, non-exclusive, non-transferable license to:
+Use the Software for internal business purposes only
+Modify the Software for personal use only
+Distribute the Software only with explicit written permission
+2. RESTRICTIONS
+Licensee SHALL NOT:
+Reverse engineer, decompile, or disassemble the Software
+Remove or modify any copyright, trademark, or proprietary notices
+Sell, lease, rent, or sublicense the Software to third parties
+Use the Software to create competing products or services
+Extract algorithms, methodologies, or core functionality for commercial use
+Distribute modified versions without written consent
+Use the Software in any way that violates applicable laws
+3. INTELLECTUAL PROPERTY RIGHTS
+All rights, title, and interest in the Software remain with Licensor
+This Agreement does not transfer ownership of the Software
+Any modifications remain the property of Licensor
+Licensee acknowledges that the Software contains proprietary and confidential information
+4. COMMERCIAL USE RESTRICTIONS
+For Commercial Use:
+Separate commercial license required
+Royalty payments may apply
+Written agreement must be executed
+Source code access requires additional licensing
+5. ENFORCEMENT & PENALTIES
+Violation of this Agreement may result in:
+Immediate termination of license
+Legal action for copyright infringement
+Damages up to $150,000 per violation (US Copyright Act)
+Injunctive relief to prevent further violations
+Recovery of attorney's fees and costs
+6. DISCLAIMER
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. LICENSOR DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+7. TERMINATION
+This Agreement terminates immediately upon:
+Violation of any terms
+Unauthorized commercial use
+Reverse engineering attempts
+Distribution without permission
